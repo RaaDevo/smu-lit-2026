@@ -239,6 +239,136 @@ class HealthResponse(Model):
     ai_mode: Literal['mock', 'live']
     require_auth: bool
 
+AgentName = Literal['TRIAGE', 'PRACTICE_GROUP', 'SIGN_OFF', 'CLIENT_ALERT', 'EVALUATOR']
+
+class TwinCalibrationProfile(Model):
+    id: Text
+    version: Text
+    label: Text
+    agent: AgentName
+    risk_posture: Literal['CONSERVATIVE', 'BALANCED']
+    evidence_threshold: Literal['SUPPLIED_SOURCE_REQUIRED', 'SIGNED_FINDING_REQUIRED']
+    escalation_threshold: Severity
+    authority: list[Text] = Field(min_length=1)
+    competence_boundaries: list[Text] = Field(min_length=1)
+    handoff_rules: list[Text] = Field(min_length=1)
+
+class TriageItem(Model):
+    asset_id: Text
+    priority: Severity
+    issue: Text
+    proposed_owner: Text
+    evidence: list[EvidenceReference] = Field(min_length=1)
+
+class TriageAgentInput(StressInput):
+    run_id: Text
+
+class TriageAgentOutput(Model):
+    items: list[TriageItem] = Field(min_length=1)
+    handoff_summary: Text
+
+class ReconsiderationRequest(Model):
+    finding_ids: list[Text] = Field(min_length=1)
+    reasons: list[Text] = Field(min_length=1)
+    required_evidence_or_analysis: list[Text] = Field(min_length=1)
+
+class PracticeConflict(Model):
+    id: Text
+    asset_ids: list[Text] = Field(min_length=1)
+    issue: Text
+    severity: Severity
+    evidence: list[EvidenceReference] = Field(min_length=1)
+
+class PracticeGroupAgentOutput(Model):
+    findings: list[DirectFinding] = Field(min_length=5, max_length=5)
+    conflicts: list[PracticeConflict]
+    ownership: dict[str, Text]
+    handoff_summary: Text
+
+class PracticeGroupAgentInput(StressInput):
+    run_id: Text
+    triage: TriageAgentOutput
+    reconsideration: ReconsiderationRequest | None = None
+
+class SignOffAgentOutput(Model):
+    decision: Literal['APPROVED', 'RETURNED']
+    approved_finding_ids: list[Text]
+    reconsideration: ReconsiderationRequest | None
+    unresolved_risks: list[Text]
+    handoff_summary: Text
+
+class SignOffAgentInput(Model):
+    run_id: Text
+    scenario: Scenario
+    sources: list[LegalSource] = Field(min_length=2)
+    triage: TriageAgentOutput
+    practice_group: PracticeGroupAgentOutput
+
+class ClientAlertAgentOutput(Model):
+    status: Literal['DRAFT_READY', 'HOLD_FOR_SIGN_OFF']
+    headline: Text
+    audience: Text
+    draft: Text
+    caveats: list[Text] = Field(min_length=1)
+    source_finding_ids: list[Text]
+    requires_human_publication: Literal[True] = True
+
+class ClientAlertAgentInput(Model):
+    run_id: Text
+    scenario: Scenario
+    signed_findings: list[DirectFinding]
+    sign_off: SignOffAgentOutput
+
+class EvaluatorObservation(Model):
+    id: Text
+    category: Literal['CONTRADICTION', 'UNSUPPORTED_ASSUMPTION', 'FAILED_HANDOFF', 'UNRESOLVED_RISK', 'MISSING_OWNERSHIP', 'STALE_ARTEFACT', 'DOWNSTREAM_EFFECT', 'RESILIENCE_FAILURE']
+    severity: Severity
+    agent_names: list[AgentName]
+    asset_ids: list[Text]
+    issue: Text
+    recommendation: Text
+    evidence: list[EvidenceReference]
+
+class EvaluatorAgentOutput(Model):
+    observations: list[EvaluatorObservation]
+    run_complete: bool
+    summary: Text
+
+class AgentAuditRecord(Model):
+    invocation_id: Text
+    sequence: Annotated[int, Field(ge=1)]
+    agent: AgentName
+    attempt: Annotated[int, Field(ge=1, le=2)]
+    profile_id: Text
+    profile_version: Text
+    prompt_version: Text
+    execution_mode: Literal['LIVE', 'MOCK', 'FALLBACK']
+    received: dict[str, object]
+    produced: dict[str, object]
+    input_hash: Text
+    output_hash: Text
+    started_at: Text
+    completed_at: Text
+
+class EvaluatorAgentInput(Model):
+    run_id: Text
+    scenario: Scenario
+    audit_records: list[AgentAuditRecord] = Field(min_length=4)
+    firm_assets: list[FirmAsset] = Field(min_length=5, max_length=5)
+    dependencies: list[Dependency]
+
+class TwinRunResult(Model):
+    run_id: Text
+    context_hash: Text
+    profiles: list[TwinCalibrationProfile] = Field(min_length=5, max_length=5)
+    triage: TriageAgentOutput
+    practice_group_attempts: list[PracticeGroupAgentOutput] = Field(min_length=1, max_length=2)
+    sign_off_attempts: list[SignOffAgentOutput] = Field(min_length=1, max_length=2)
+    client_alert: ClientAlertAgentOutput
+    evaluator: EvaluatorAgentOutput
+    impact: ImpactResult
+    audit_records: list[AgentAuditRecord] = Field(min_length=5, max_length=7)
+
 class ProjectSnapshot(Model):
     seed: SeedPack
     comparative: ComparativeResult | None

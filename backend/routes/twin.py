@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends
 from auth import require_user
 from domain import (ComparativeInput, ComparativeResult, StressInput, ImpactResult,
     RemediationInput, RemediationResult, PatchReviewInput, PatchReviewResult,
-    ReportInput, ResilienceBrief, SeedPack, DirectResult, ProjectSnapshot)
+    ReportInput, ResilienceBrief, SeedPack, DirectResult, ProjectSnapshot, TwinRunResult)
 from services.ai_service import run_stage
 from services.demo_twin import load_seed, demo_comparative, demo_direct, demo_remediation
 from services import pipeline
 from services.propagation import propagate
+from services.twin_orchestrator import run_twins
 
 router = APIRouter()
 
@@ -25,6 +26,11 @@ async def stress(data: StressInput):
     pipeline.validate_stress_input(data)
     result = await run_stage('impact', data, DirectResult, demo_direct, pipeline.validate_direct)
     return propagate(result, data.dependencies, pipeline.context_hash(data))
+
+@router.post('/analyse/twin-run', response_model=TwinRunResult, dependencies=[Depends(require_user)])
+async def twin_run(data: StressInput):
+    pipeline.validate_stress_input(data)
+    return await run_twins(data)
 
 @router.post('/analyse/remediation', response_model=RemediationResult, dependencies=[Depends(require_user)])
 async def remediation(data: RemediationInput):

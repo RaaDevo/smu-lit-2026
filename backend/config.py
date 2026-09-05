@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
     openrouter_output_mode: Literal['json_schema', 'json_object'] = 'json_schema'
     ai_timeout_seconds: float = Field(default=25, ge=1, le=30)
+    agent_fallback_on_error: bool = True
     require_auth: bool = False
     firebase_project_id: str = 'lit2026'
     app_env: Literal['development', 'production'] = 'development'

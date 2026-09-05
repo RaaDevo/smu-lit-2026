@@ -5,6 +5,10 @@ from pathlib import Path
 import domain
 
 def ts(schema):
+    if schema is True:
+        return 'unknown'
+    if schema is False:
+        return 'never'
     if '$ref' in schema:
         return schema['$ref'].split('/')[-1]
     if 'const' in schema:

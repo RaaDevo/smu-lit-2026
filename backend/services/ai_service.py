@@ -93,3 +93,34 @@ async def run_stage(stage: str, data: BaseModel, schema: type[T],
                         + str(exc)[:2500] + '. Obey the schema and supplied source/asset IDs. Return JSON only.'},
                 ])
     raise AIServiceError('AI stage did not return a result.')
+
+
+async def run_structured(name: str, system_prompt: str, data: BaseModel, schema: type[T]) -> T:
+    """Run one independently governed agent through the existing strict provider boundary."""
+    settings = get_settings()
+    if not settings.openrouter_api_key or not settings.openrouter_model:
+        raise AIServiceError('Live AI is enabled, but OpenRouter configuration is incomplete.')
+    messages = [
+        {'role': 'system', 'content': SYSTEM_PROMPT + '\n' + system_prompt},
+        {'role': 'user', 'content': 'JSON schema:\n' + json.dumps(schema.model_json_schema(by_alias=True))
+            + '\nSupplied input:\n' + data.model_dump_json(by_alias=True)},
+    ]
+    response_format = ({'type': 'json_schema', 'json_schema': {
+        'name': name, 'strict': True, 'schema': schema.model_json_schema(by_alias=True)}}
+        if settings.openrouter_output_mode == 'json_schema' else {'type': 'json_object'})
+    async with httpx.AsyncClient(timeout=httpx.Timeout(settings.ai_timeout_seconds, connect=10.0)) as client:
+        for attempt in range(2):
+            try:
+                async with asyncio.timeout(settings.ai_timeout_seconds):
+                    response = await client.post(settings.openrouter_base_url.rstrip('/') + '/chat/completions',
+                        headers={'Authorization': 'Bearer ' + settings.openrouter_api_key},
+                        json={'model': settings.openrouter_model, 'messages': messages,
+                              'response_format': response_format, 'temperature': 0.1})
+                    response.raise_for_status()
+                content = response.json()['choices'][0]['message']['content']
+                return schema.model_validate_json(content)
+            except (TimeoutError, httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+                if attempt:
+                    raise AIServiceError('The agent response remained invalid after one repair.') from exc
+                messages.append({'role': 'user', 'content': 'Repair your JSON response once. Return only the required schema.'})
+    raise AIServiceError('Agent did not return a result.')

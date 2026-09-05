@@ -38,6 +38,14 @@ export type ComparativeAssessment = {
   confidence: number;
 };
 
+export type ScenarioRecommendation = {
+  scenarioId: string;
+  rationale: string;
+  persuasiveWeight: "LOW" | "MEDIUM" | "HIGH";
+  evidence: Array<EvidenceReference>;
+  confidence: number;
+};
+
 export type Scenario = {
   id: string;
   title: string;
@@ -91,6 +99,7 @@ export type SeedPack = {
 export type ComparativeResult = {
   assessments: Array<ComparativeAssessment>;
   scenarios: Array<Scenario>;
+  recommendation: ScenarioRecommendation;
 };
 
 export type StressInput = {
@@ -234,6 +243,159 @@ export type HealthResponse = {
   status: "ok";
   aiMode: "mock" | "live";
   requireAuth: boolean;
+};
+
+export type TwinCalibrationProfile = {
+  id: string;
+  version: string;
+  label: string;
+  agent: "TRIAGE" | "PRACTICE_GROUP" | "SIGN_OFF" | "CLIENT_ALERT" | "EVALUATOR";
+  riskPosture: "CONSERVATIVE" | "BALANCED";
+  evidenceThreshold: "SUPPLIED_SOURCE_REQUIRED" | "SIGNED_FINDING_REQUIRED";
+  escalationThreshold: "LOW" | "MEDIUM" | "HIGH";
+  authority: Array<string>;
+  competenceBoundaries: Array<string>;
+  handoffRules: Array<string>;
+};
+
+export type TriageItem = {
+  assetId: string;
+  priority: "LOW" | "MEDIUM" | "HIGH";
+  issue: string;
+  proposedOwner: string;
+  evidence: Array<EvidenceReference>;
+};
+
+export type TriageAgentInput = {
+  scenario: Scenario;
+  sources: Array<LegalSource>;
+  firmAssets: Array<FirmAsset>;
+  dependencies: Array<Dependency>;
+  runId: string;
+};
+
+export type TriageAgentOutput = {
+  items: Array<TriageItem>;
+  handoffSummary: string;
+};
+
+export type ReconsiderationRequest = {
+  findingIds: Array<string>;
+  reasons: Array<string>;
+  requiredEvidenceOrAnalysis: Array<string>;
+};
+
+export type PracticeConflict = {
+  id: string;
+  assetIds: Array<string>;
+  issue: string;
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  evidence: Array<EvidenceReference>;
+};
+
+export type PracticeGroupAgentOutput = {
+  findings: Array<DirectFinding>;
+  conflicts: Array<PracticeConflict>;
+  ownership: Record<string, string>;
+  handoffSummary: string;
+};
+
+export type PracticeGroupAgentInput = {
+  scenario: Scenario;
+  sources: Array<LegalSource>;
+  firmAssets: Array<FirmAsset>;
+  dependencies: Array<Dependency>;
+  runId: string;
+  triage: TriageAgentOutput;
+  reconsideration: ReconsiderationRequest | null;
+};
+
+export type SignOffAgentOutput = {
+  decision: "APPROVED" | "RETURNED";
+  approvedFindingIds: Array<string>;
+  reconsideration: ReconsiderationRequest | null;
+  unresolvedRisks: Array<string>;
+  handoffSummary: string;
+};
+
+export type SignOffAgentInput = {
+  runId: string;
+  scenario: Scenario;
+  sources: Array<LegalSource>;
+  triage: TriageAgentOutput;
+  practiceGroup: PracticeGroupAgentOutput;
+};
+
+export type ClientAlertAgentOutput = {
+  status: "DRAFT_READY" | "HOLD_FOR_SIGN_OFF";
+  headline: string;
+  audience: string;
+  draft: string;
+  caveats: Array<string>;
+  sourceFindingIds: Array<string>;
+  requiresHumanPublication: true;
+};
+
+export type ClientAlertAgentInput = {
+  runId: string;
+  scenario: Scenario;
+  signedFindings: Array<DirectFinding>;
+  signOff: SignOffAgentOutput;
+};
+
+export type EvaluatorObservation = {
+  id: string;
+  category: "CONTRADICTION" | "UNSUPPORTED_ASSUMPTION" | "FAILED_HANDOFF" | "UNRESOLVED_RISK" | "MISSING_OWNERSHIP" | "STALE_ARTEFACT" | "DOWNSTREAM_EFFECT" | "RESILIENCE_FAILURE";
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  agentNames: Array<"TRIAGE" | "PRACTICE_GROUP" | "SIGN_OFF" | "CLIENT_ALERT" | "EVALUATOR">;
+  assetIds: Array<string>;
+  issue: string;
+  recommendation: string;
+  evidence: Array<EvidenceReference>;
+};
+
+export type EvaluatorAgentOutput = {
+  observations: Array<EvaluatorObservation>;
+  runComplete: boolean;
+  summary: string;
+};
+
+export type AgentAuditRecord = {
+  invocationId: string;
+  sequence: number;
+  agent: "TRIAGE" | "PRACTICE_GROUP" | "SIGN_OFF" | "CLIENT_ALERT" | "EVALUATOR";
+  attempt: number;
+  profileId: string;
+  profileVersion: string;
+  promptVersion: string;
+  executionMode: "LIVE" | "MOCK" | "FALLBACK";
+  received: Record<string, unknown>;
+  produced: Record<string, unknown>;
+  inputHash: string;
+  outputHash: string;
+  startedAt: string;
+  completedAt: string;
+};
+
+export type EvaluatorAgentInput = {
+  runId: string;
+  scenario: Scenario;
+  auditRecords: Array<AgentAuditRecord>;
+  firmAssets: Array<FirmAsset>;
+  dependencies: Array<Dependency>;
+};
+
+export type TwinRunResult = {
+  runId: string;
+  contextHash: string;
+  profiles: Array<TwinCalibrationProfile>;
+  triage: TriageAgentOutput;
+  practiceGroupAttempts: Array<PracticeGroupAgentOutput>;
+  signOffAttempts: Array<SignOffAgentOutput>;
+  clientAlert: ClientAlertAgentOutput;
+  evaluator: EvaluatorAgentOutput;
+  impact: ImpactResult;
+  auditRecords: Array<AgentAuditRecord>;
 };
 
 export type ProjectSnapshot = {
