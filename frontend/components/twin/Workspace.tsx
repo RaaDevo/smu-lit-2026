@@ -568,6 +568,29 @@ function Workspace({
                 ))}
               </div>
               <p className="mt-4 text-sm leading-6">{project.twinRun.evaluator.summary}</p>
+              <details className="mt-4 border-t border-[#c9c9c5] pt-3">
+                <summary className="cursor-pointer text-sm font-semibold">Twin Calibration Profile</summary>
+                <div className="mt-3 grid grid-cols-5 gap-3 text-xs leading-5">
+                  {project.twinRun.profiles.map((profile) => (
+                    <div key={profile.id}>
+                      <p className="font-semibold">{profile.label} · {profile.version}</p>
+                      <p className="mt-1 text-[#686868]">{profile.authority.join("; ")}</p>
+                      <p className="mt-1 text-[#686868]">Boundary: {profile.competenceBoundaries.join("; ")}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+              <details className="mt-4 border-t border-[#c9c9c5] pt-3">
+                <summary className="cursor-pointer text-sm font-semibold">Agent handoff audit</summary>
+                <div className="mt-3 space-y-3">
+                  {project.twinRun.auditRecords.map((record) => (
+                    <details key={`${record.invocationId}-payload`} className="border-b border-[#c9c9c5] pb-3">
+                      <summary className="cursor-pointer text-xs font-semibold">{record.agent.replaceAll("_", " ")} · received and produced record</summary>
+                      <pre className="mt-2 overflow-auto bg-[#f8f8f6] p-3 text-xs">{JSON.stringify({ received: record.received, produced: record.produced }, null, 2)}</pre>
+                    </details>
+                  ))}
+                </div>
+              </details>
             </details>
           )}
           <div className="mb-4 flex flex-wrap items-center gap-3">
