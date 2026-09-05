@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LegalTech Sandbox",
-  description: "SMU LIT Hackathon full-stack starter",
+  title: "Firm Regulatory Resilience Twin",
+  description: "Scenario approval, internal impact and lawyer-reviewed remediation",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -13,4 +13,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

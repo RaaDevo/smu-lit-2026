@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // One small complete project per owner for the MVP.
+    match /projects/{projectId} {
+      allow create: if request.auth != null
+        && projectId == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.schemaVersion == 1;
+      allow read: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null
+        && projectId == request.auth.uid
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.schemaVersion == 1;
+    }
+  }
+}

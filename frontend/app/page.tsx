@@ -1,6 +1,5 @@
-import { AnalysisWorkspace } from "@/components/AnalysisWorkspace";
+import { TwinApp } from "@/components/twin/Workspace";
 
 export default function Home() {
-  return <AnalysisWorkspace />;
+  return <TwinApp />;
 }
-

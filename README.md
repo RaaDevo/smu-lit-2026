@@ -1,152 +1,167 @@
-# LegalTech Sandbox
+# Firm Regulatory Resilience Twin
 
-A deliberately small full-stack starter for the SMU LIT Legal-Tech Hackathon. It provides a typed Next.js → FastAPI analysis flow while keeping OpenRouter, Firebase Authentication, and Firestore optional. Mock AI is enabled by default, so the complete core flow runs without credentials.
+A desktop hackathon prototype for the SMU LIT challenge, “Designing a Sustainable and Resilient LegalTech”. It tests **one lawyer-approved hypothetical Singapore position** against five synthetic firm artefacts and propagates remediation requirements through their dependencies. It never presents the hypothetical as current law or automatically rewrites documents.
+
+The complete local workflow works without OpenRouter or Firebase credentials. Frozen requirements: [AMENDMENTS](docs/AMENDMENTS.md) > [TRD](docs/TRD.md) > [PRD](docs/PRD.md). See [the implementation plan and classification](docs/superpowers/plans/2026-09-05-resilience-twin.md).
 
 ## Architecture
 
 ```text
-Browser (Next.js + TypeScript + Tailwind)
-  └─ POST /analyse
-       └─ FastAPI + Pydantic
-            └─ analyse_text()
-                 ├─ deterministic demo service (default)
-                 └─ OpenRouter OpenAI-compatible API (optional)
-
-Browser-only optional services
-  └─ Firebase client SDK
-       ├─ Google Authentication
-       └─ Firestore collection: analyses
+Curated UK development + Singapore/UK evidence
+  → Stage 1: comparative analysis and hypothetical scenarios
+  → Lawyer selects/edits and approves ONE working assumption
+  → Stage 2: direct semantic analysis of five assets
+  → Deterministic upstream → downstream propagation
+  → Stage 3: remediation proposals and adversarial review
+  → Lawyer accepts/rejects/edits/escalates
+  → Deterministic Regulatory Resilience Brief
 ```
 
-Challenge-specific backend logic should be added under `backend/services/` and exposed through a small route under `backend/routes/`. Challenge-specific frontend features should go in `frontend/components/`. Do not add them to `ai_service.py` unless they concern the AI-provider boundary.
+Next.js/React/TypeScript/Tailwind owns the workspace and optional Firebase Web SDK persistence. FastAPI/Pydantic is stateless: every request carries its full analysis context. Three major model stages share one OpenRouter boundary. Graph traversal, approval checks, totals, provenance checks and report assembly are ordinary code.
+
+No live legal discovery, RAG, vector/graph database, monitoring, autonomous agents, mobile application or automatic document publication is included.
 
 ## Run locally
 
-### 1. Backend
-
-PowerShell:
+Use Node 22.18+ (Node 24 also works) and Python 3.12+. From the repository root, in PowerShell:
 
 ```powershell
 cd backend
 py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-python -m uvicorn main:app --reload
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload
 ```
 
-macOS/Linux activation uses `source .venv/bin/activate`; copy the environment file with `cp .env.example .env`.
-
-Open:
-
-- API health: http://localhost:8000/health
-- Interactive API docs: http://localhost:8000/docs
-
-### 2. Frontend
+Skip creating the virtual environment if it already exists. No activation script or environment file is required for the default mock workflow.
 
 In a second terminal:
 
 ```powershell
 cd frontend
-npm install
-Copy-Item .env.example .env.local
-npm run dev
+npm.cmd ci
+npm.cmd run dev
 ```
 
-Open http://localhost:3000. Paste any text and select **Analyse**. The header should display **Demo Mode**, and the result should appear without any external account or credential.
+Open [the workspace](http://localhost:3000). API [health](http://localhost:8000/health) and [interactive contracts](http://localhost:8000/docs) are available separately. Use `localhost` consistently; it is the default allowed frontend origin.
 
-## Environment variables
+On macOS/Linux, use `.venv/bin/python` and `npm` instead of the Windows commands. Existing local environment settings override defaults; inspect your own configuration if the header does not show **Demo Mode**.
 
-Create local files from the committed templates; never commit the resulting files.
+## Canonical 60–90 second demo
 
-### `backend/.env`
+1. Inspect the curated development, evidence and synthetic corpus. Select **Analyse evidence & generate scenarios**.
+2. Choose **Designated-service assessment duty**. It asks what happens **IF** Singapore requires designated services to document and retain an illegal-content risk assessment.
+3. **Approve working assumption**, then **Stress Test Firm**. Stress testing is blocked before approval.
+4. Select training. Its direct result is unaffected, but its checklist dependency makes it a downstream update. Inspect the playbook → checklist → training path and evidence.
+5. **Propose remediation & review**. Edit and accept a proposal; escalate the advisory's applicability question.
+6. Generate the brief. Original, proposed and final reviewed text remain distinct. Export JSON or print/save PDF; outstanding approvals and publication actions remain explicit.
 
-| Variable | Default | Purpose |
+| Asset | Section | Canonical result |
 | --- | --- | --- |
-| `USE_MOCK_AI` | `true` | Prevents all provider calls and returns deterministic data. |
-| `OPENROUTER_API_KEY` | empty | Organiser-provided team key for live mode. |
-| `OPENROUTER_MODEL` | empty | Exact model identifier supplied by the organiser. |
-| `OPENROUTER_BASE_URL` | OpenRouter API URL | OpenAI-compatible provider base URL. |
-| `ALLOWED_ORIGINS` | `http://localhost:3000` | Comma-separated allowed frontend origins. |
+| Online Safety Compliance Playbook | 4.2 | UPDATE_REQUIRED |
+| Platform Client Compliance Checklist | Step 6 | UPDATE_REQUIRED |
+| Associate Training / Internal Guidance | Slide 14 | DOWNSTREAM_UPDATE |
+| Template Client Advisory | Scope note | REVIEW_REQUIRED |
+| Standard Contract / Platform Clause Set | Clause 2 | UNAFFECTED |
 
-To enable OpenRouter later, edit `backend/.env`:
+Mock mode is deliberately deterministic, not a semantic model. Editing the canonical scenario or corpus produces conservative low-confidence review flags. Live mode analyses the supplied text and does not look up canonical statuses. Changing the selected scenario or its description clears approval and all dependent results and decisions.
 
-```dotenv
-USE_MOCK_AI=false
-OPENROUTER_API_KEY=the-organiser-provided-key
-OPENROUTER_MODEL=the-exact-organiser-provided-model-id
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-```
+## Evidence and legal sign-off
 
-Restart FastAPI after changing the environment. Changing models requires only changing `OPENROUTER_MODEL`; no source edit is needed. OpenRouter calls, structured-output fallback, timeouts, response parsing, and validation are isolated in `backend/services/ai_service.py`; the model identifier is never hardcoded.
+The seed in `backend/data/seed.json` contains dated **curator summaries**, explicitly labelled as such, of two public regulator publications:
 
-### `frontend/.env.local`
+- [Ofcom: scrutinising illegal-harms risk assessments, 3 March 2025](https://www.ofcom.org.uk/online-safety/illegal-and-harmful-content/enforcing-the-online-safety-act-scrutinising-illegal-harms-risk-assessments).
+- [IMDA: Online Safety Code announcement, 17 July 2023](https://www.imda.gov.sg/resources/press-releases-factsheets-and-speeches/press-releases/2023/imdas-online-safety-code-comes-into-effect).
 
-| Variable | Default | Purpose |
+These are not statutory quotations or a complete current-law evidence base. No runtime web research occurs. The law team must verify the summaries, operative provisions, designated-service scope, commencement, record-retention requirements and current Singapore position before presenting legal conclusions. The pack does **not** establish that Singapore currently lacks a risk-assessment duty. All five internal materials are deliberately synthetic.
+
+Evidence IDs must exist in the supplied pack, and cited passages must occur in the supplied relevant text. This verifies traceability, not legal correctness or logical support. Model confidence is not legal certainty.
+
+## OpenRouter configuration
+
+If needed, create `backend/.env` from its example **without overwriting an existing local file**. Keep keys server-side and uncommitted.
+
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | FastAPI base URL. |
-| `NEXT_PUBLIC_FIREBASE_*` | empty | Browser-visible Firebase web-app configuration. |
-| `NEXT_PUBLIC_ENABLE_AUTH` | `false` | Shows optional Google sign-in when Firebase is configured. |
-| `NEXT_PUBLIC_ENABLE_FIRESTORE` | `false` | Shows saving for a signed-in user when Firebase is configured. |
+| USE_MOCK_AI | true | No external AI requests |
+| OPENROUTER_API_KEY | empty | Organiser-provided team key, added later |
+| OPENROUTER_MODEL | empty | Exact organiser-provided identifier; never inferred or hardcoded |
+| OPENROUTER_BASE_URL | https://openrouter.ai/api/v1 | Provider endpoint |
+| OPENROUTER_OUTPUT_MODE | json_schema | Select json_object if the chosen model lacks strict JSON Schema support |
+| AI_TIMEOUT_SECONDS | 25 | Per-request wall-clock timeout; permitted range 1–30 seconds |
+| ALLOWED_ORIGINS | http://localhost:3000 | Comma-separated exact frontend origins |
+| REQUIRE_AUTH | false | Verify Firebase ID tokens on analysis/report routes |
+| FIREBASE_PROJECT_ID | lit2026 | Expected token audience/project |
+| APP_ENV | development | production refuses startup unless REQUIRE_AUTH=true |
 
-All `NEXT_PUBLIC_*` values are embedded in the browser bundle. Only Firebase web configuration and public feature flags belong there—never an OpenRouter key or Firebase Admin credential.
+Set `USE_MOCK_AI=false` only after configuring both key and exact model. Restart FastAPI after changes. Invalid outputs get **one** repair attempt, including schema and provenance checks; a second invalid response fails safely. Timeouts, network failures and provider rejections return controlled errors without automatic retries or silent mock fallback. A stage can take two request timeouts if repair is needed. The UI explains how to restart in mock mode.
 
-## Optional Firebase setup
+## Firebase persistence and Google sign-in
 
-The Firebase project already exists; do not create another one.
+Use the **existing lit2026 project in Singapore**. No new Firebase project or Firebase Admin service-account private key is needed.
 
-1. In the Firebase console, open the existing project and add or select a Web app.
-2. Copy its public web configuration values into `frontend/.env.local`.
-3. For Google sign-in, enable **Authentication → Sign-in method → Google**, then set `NEXT_PUBLIC_ENABLE_AUTH=true`.
-4. For saving, create Firestore in the existing project's desired Singapore-region setup, set `NEXT_PUBLIC_ENABLE_FIRESTORE=true`, and add rules that allow authenticated users to create only documents whose `userId` equals their own UID.
-5. Restart Next.js after changing any frontend environment value.
+1. Select/add a Web app in that project and put its public web configuration into `frontend/.env.local`, following `frontend/.env.example`.
+2. Enable Google in Firebase Authentication and add localhost and your deployed frontend domain to authorized domains.
+3. Enable `NEXT_PUBLIC_ENABLE_AUTH=true`. For persistence also enable `NEXT_PUBLIC_ENABLE_FIRESTORE=true` and use the existing project's Firestore database. If it has not been provisioned, provision it inside that same project in the intended Singapore location.
+4. Review and publish [firestore.rules](firestore.rules). It grants owner-only access to `projects/{uid}` and no delete permission. Do not leave permissive test rules enabled.
+5. Restart/rebuild Next.js. Sign in, **Save project**, reload, and **Load saved project** to verify the actual cloud configuration.
 
-The client initializes Firebase only when every required web configuration value exists. Missing or unavailable Firebase configuration does not block analysis. This starter does not use Firebase Admin and requires no service-account private key.
+The MVP stores one complete versioned snapshot per user. It includes the five assets, evidence, selected scenario, findings, proposals, decision history and brief. Save/load is explicit; unsaved state is in memory and is lost on reload/sign-out. Resetting a local run does not delete the saved snapshot. Save/load validates snapshots through FastAPI; failures preserve local working state. The frontend writes Firestore directly; the backend never accesses project state in Firebase.
 
-A minimal starting Firestore rule for hackathon development is:
+Saving captures the snapshot at the time of the click and does not block analysis or local edits. Firestore acknowledgement waits are limited to 12 seconds. An unconfirmed save may still commit later when connectivity returns; the UI states this explicitly. Save again to include subsequent local changes.
 
-```text
-match /analyses/{analysisId} {
-  allow create: if request.auth != null
-                && request.resource.data.userId == request.auth.uid;
-  allow read, update, delete: if request.auth != null
-                              && resource.data.userId == request.auth.uid;
-}
-```
+With Firebase features disabled, missing credentials do not block local analysis. Enabling authentication without valid Firebase configuration intentionally shows a configuration/sign-in gate. `NEXT_PUBLIC_*` values are public: never place OpenRouter keys or private credentials there.
 
-Review and tighten rules for the eventual challenge data model.
+## Protected deployment
 
-## Checks
+Vercel hosts `frontend` as the project root. Host FastAPI separately on a Python-capable HTTPS service. No automatic deployment is configured.
+
+- Backend: `APP_ENV=production`, `REQUIRE_AUTH=true`, `FIREBASE_PROJECT_ID=lit2026`, and the exact frontend `ALLOWED_ORIGINS`.
+- Frontend: `NEXT_PUBLIC_API_URL` pointing to the deployed API; Firebase authentication enabled/configured before building.
+- Add the deployed/preview domains you use to Firebase authorized domains.
+- Verify signed-in and signed-out requests before adding provider credentials.
+
+`GET /health` and `GET /seed` are public. Every POST under `/analyse/*` and `/reports/*` requires an ID token when protection is enabled. The backend verifies RS256 signatures against Google's cached public certificates, audience, issuer, subject and token times. Missing/invalid/expired tokens reject before OpenRouter work. CORS is not authentication. The MVP does not implement token-revocation checks, lawyer-role certification or an immutable compliance audit ledger.
+
+## API and code map
+
+| Route | Purpose |
+| --- | --- |
+| GET /seed | Curated evidence, five assets and directed dependencies |
+| POST /analyse/comparative | Stage 1 |
+| POST /analyse/stress-test | Approval check, Stage 2, deterministic propagation |
+| POST /analyse/remediation | Stage 3 |
+| POST /reports/review-patch | Record decision without modifying an asset |
+| POST /reports/generate | Validate inputs and assemble the brief |
+| POST /reports/validate-project | Validate snapshots before save/restore |
+
+- `backend/domain.py`: strict Pydantic contract with camelCase aliases; `frontend/types/domain.ts` is generated from it.
+- `backend/services/pipeline.py`: contextual validation, stale-run detection, decisions and brief assembly.
+- `backend/services/propagation.py`: cycle-safe upstream-to-downstream traversal, preserving stronger direct statuses and inherited evidence.
+- `backend/services/ai_service.py`: shared mock/live validation and bounded recovery.
+- `frontend/components/twin/Workspace.tsx`: staged desktop workflow; `frontend/lib/api.ts`: single API boundary.
+- `frontend/lib/project.ts`: Firestore save/load; `backend/auth.py`: public-key token verification.
+
+## Verification
 
 ```powershell
 cd backend
-python -m pytest -q
-python -c "from main import app; print(app.title)"
-
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe export_types.py --check
 cd ..\frontend
-npm run lint
-npm run build
+npm.cmd test
+npm.cmd run lint
+npm.cmd run build
 ```
 
-GitHub Actions runs the same frontend lint/build and backend import/tests on pushes and pull requests. It does not deploy.
+After domain changes, `python export_types.py` prints updated TypeScript declarations for the generated file; `--check` fails on drift. GitHub CI runs backend tests, contract checks, frontend state tests, lint and production build.
 
-## Vercel preparation
+With both local servers running in mock mode and Google Chrome installed:
 
-1. Push the repository to GitHub and import it in Vercel.
-2. Set Vercel's **Root Directory** to `frontend`; Next.js is detected automatically.
-3. Set `NEXT_PUBLIC_API_URL` to the public HTTPS URL of the separately hosted FastAPI service.
-4. Add the Firebase public web variables and feature flags only if those features are needed.
-5. Add the deployed frontend origin to the backend's comma-separated `ALLOWED_ORIGINS`.
-6. If Google Authentication is enabled, add the Vercel production domain (and any preview domains you use) under **Firebase Authentication → Settings → Authorized domains**.
+```powershell
+cd frontend
+npm.cmd run test:smoke
+```
 
-Vercel hosts the frontend only in this setup; deploy FastAPI to a Python-capable host. No deployment is triggered by this repository.
+Playwright uses installed Chrome (no browser download), traverses the real frontend/backend workflow, verifies exported JSON and scenario invalidation, and saves ignored screenshots under `.qa/`. `SMOKE_BROWSER=msedge` selects installed Edge; `SMOKE_URL` overrides the frontend URL.
 
-## Five files to understand first
-
-1. `frontend/components/AnalysisWorkspace.tsx` — UI states, analysis submission, and optional save action.
-2. `frontend/lib/api.ts` — the frontend's single backend API boundary.
-3. `backend/routes/analyse.py` — request validation and safe route-level errors.
-4. `backend/services/ai_service.py` — mock/live switch and replaceable AI-provider integration.
-5. `backend/models.py` — the shared conceptual API contract enforced by Pydantic.
-
-Tomorrow, replace or extend the generic analysis route and service with challenge-specific capabilities. Keep provider credentials server-side, and add document processing, retrieval, agents, or other architecture only if the released challenge actually needs them.
+Locally verified: 44 backend tests, four frontend state/persistence tests, contract synchronization, lint/build and desktop browser workflow including JSON/PDF export. Live OpenRouter responses were tested using controlled HTTP stubs, not an organiser key. Actual Firebase sign-in, Firestore rules/save-load and deployed protection still require checks against the configured cloud project; local token tests do not substitute for that integration check.

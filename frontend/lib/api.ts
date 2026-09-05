@@ -1,62 +1,62 @@
+import { getFirebaseServices } from "./firebase";
 import type {
-  AnalysisRequest,
-  AnalysisResponse,
+  ComparativeInput,
+  ComparativeResult,
   HealthResponse,
-} from "@/types/api";
+  ImpactResult,
+  PatchReviewInput,
+  PatchReviewResult,
+  RemediationInput,
+  RemediationResult,
+  ReportInput,
+  ResilienceBrief,
+  SeedPack,
+  StressInput,
+} from "@/types/domain";
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
-export class ApiError extends Error {
-  constructor(message: string, public readonly status?: number) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, body?: unknown): Promise<T> {
+  const user = getFirebaseServices()?.auth.currentUser;
+  const token = user ? await user.getIdToken() : null;
   let response: Response;
-
   try {
     response = await fetch(`${API_URL}${path}`, {
-      ...init,
+      method: body === undefined ? "GET" : "POST",
       headers: {
         "Content-Type": "application/json",
-        ...init?.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(65000),
     });
   } catch {
-    throw new ApiError(
-      "The backend is unavailable. Check that FastAPI is running and try again.",
+    throw new Error(
+      "The backend is unavailable or the request timed out. Check the server and retry.",
     );
   }
-
   if (!response.ok) {
-    let message = `The request failed (${response.status}).`;
-    try {
-      const payload = (await response.json()) as { detail?: unknown };
-      if (typeof payload.detail === "string") {
-        message = payload.detail;
-      }
-    } catch {
-      // Keep the safe status-based message when the server did not return JSON.
-    }
-    throw new ApiError(message, response.status);
+    const payload = await response.json().catch(() => null);
+    throw new Error(
+      typeof payload?.detail === "string"
+        ? payload.detail
+        : `Request failed (${response.status}).`,
+    );
   }
-
-  return (await response.json()) as T;
+  return response.json() as Promise<T>;
 }
 
-export function getHealth(): Promise<HealthResponse> {
-  return request<HealthResponse>("/health");
-}
-
-export function analyseText(text: string): Promise<AnalysisResponse> {
-  const body: AnalysisRequest = { text };
-  return request<AnalysisResponse>("/analyse", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
+export const getSeed = () => request<SeedPack>("/seed");
+export const getHealth = () => request<HealthResponse>("/health");
+export const compare = (data: ComparativeInput) =>
+  request<ComparativeResult>("/analyse/comparative", data);
+export const stressTest = (data: StressInput) =>
+  request<ImpactResult>("/analyse/stress-test", data);
+export const remediate = (data: RemediationInput) =>
+  request<RemediationResult>("/analyse/remediation", data);
+export const reviewPatch = (data: PatchReviewInput) =>
+  request<PatchReviewResult>("/reports/review-patch", data);
+export const generateBrief = (data: ReportInput) =>
+  request<ResilienceBrief>("/reports/generate", data);

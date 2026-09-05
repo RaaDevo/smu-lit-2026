@@ -10,35 +10,23 @@ client = TestClient(app)
 def test_health_reports_mock_mode_by_default() -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "ai_mode": "mock"}
+    assert response.json() == {"status": "ok", "aiMode": "mock", "requireAuth": False}
 
 
-def test_mock_analysis_matches_public_schema() -> None:
-    response = client.post(
-        "/analyse",
-        json={"text": "The supplier must disclose confidential data within 10 days."},
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert set(body) == {"summary", "risk_level", "issues"}
-    assert body["risk_level"] in {"low", "medium", "high"}
-    assert body["issues"]
-    assert set(body["issues"][0]) == {
-        "title",
-        "severity",
-        "explanation",
-        "recommendation",
-    }
+def test_seed_has_five_assets_and_explicit_dependency_direction() -> None:
+    body = client.get('/seed').json()
+    assert len(body['firmAssets']) == 5
+    assert body['dependencies'][0]['upstreamAssetId'] == 'playbook'
+    assert body['dependencies'][0]['downstreamAssetId'] == 'checklist'
 
 
 def test_empty_text_is_rejected() -> None:
-    response = client.post("/analyse", json={"text": "   "})
+    response = client.post("/analyse/comparative", json={})
     assert response.status_code == 422
-    assert response.json()["detail"] == "Text must not be empty."
 
 
 def test_malformed_request_is_rejected() -> None:
-    response = client.post("/analyse", json={"wrong_field": "value"})
+    response = client.post("/analyse/comparative", json={"wrong_field": "value"})
     assert response.status_code == 422
 
 
@@ -47,7 +35,8 @@ def test_live_mode_without_credentials_returns_safe_error(monkeypatch) -> None:
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     get_settings.cache_clear()
     try:
-        response = client.post("/analyse", json={"text": "A valid input."})
+        seed = client.get('/seed').json()
+        response = client.post('/analyse/comparative', json={'development': seed['development'], 'sources': seed['sources']})
         assert response.status_code == 503
         assert response.json() == {
             "detail": "Live AI is enabled, but OPENROUTER_API_KEY is not configured."

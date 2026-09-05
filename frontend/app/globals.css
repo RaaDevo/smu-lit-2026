@@ -24,6 +24,23 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+@media print {
+  body,
+  main {
+    min-width: 0 !important;
+    background: white;
+  }
+  .brief {
+    font-size: 11pt;
+  }
+  .brief details {
+    break-inside: avoid;
+  }
+  .brief article {
+    break-inside: avoid;
+  }
+}
+
 @layer components {
   .button-primary {
     @apply inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50;
@@ -33,4 +50,3 @@ textarea:focus-visible {
     @apply inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
-
