@@ -62,6 +62,13 @@ test("comparative analysis preselects the AI recommendation", () => {
   assert.equal(applyComparativeResult(initialProject(), comparative).scenario?.id, "one");
 });
 
+test("legacy comparative state without a recommendation remains selectable without crashing", () => {
+  const legacyComparative = { assessments: [], scenarios: [scenario] } as unknown as ComparativeResult;
+  const project = applyComparativeResult(initialProject(), legacyComparative);
+  assert.equal(project.comparative?.scenarios[0]?.id, "one");
+  assert.equal(project.scenario, null);
+});
+
 test("lawyer-authored assumption clears agent and review state", () => {
   const comparative = { assessments: [], scenarios: [scenario], recommendation: {
     scenarioId: "one", rationale: "Supported", persuasiveWeight: "HIGH", evidence: [], confidence: 0.8,

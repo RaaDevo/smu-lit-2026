@@ -57,11 +57,14 @@ export function applyComparativeResult(
   project: ProjectState,
   comparative: ComparativeResult,
 ): ProjectState {
+  const base = { ...initialProject(), seed: project.seed, comparative };
+  // A deployed frontend can receive a response from an older backend or an older
+  // persisted payload. Keep those scenarios available, but do not fabricate a recommendation.
+  if (!comparative.recommendation) return base;
   const recommended = comparative.scenarios.find(
     (scenario) => scenario.id === comparative.recommendation.scenarioId,
   );
-  if (!recommended) throw new Error("The recommendation does not match a scenario.");
-  return selectScenario({ ...initialProject(), seed: project.seed, comparative }, recommended);
+  return recommended ? selectScenario(base, recommended) : base;
 }
 
 export function createLawyerAssumption(
@@ -69,13 +72,15 @@ export function createLawyerAssumption(
   description = "",
 ): ProjectState {
   if (!project.comparative) throw new Error("Analyse comparative evidence first.");
-  const recommendation = project.comparative.recommendation;
+  const evidence = project.comparative.recommendation?.evidence
+    ?? project.comparative.scenarios[0]?.evidence
+    ?? [];
   return selectScenario(project, {
     id: "lawyer-assumption",
     title: "Lawyer-authored working assumption",
     description,
     assumptions: ["Lawyer-authored hypothetical; scope and commencement require legal review."],
-    evidence: recommendation.evidence,
+    evidence,
     uncertainty: "HIGH",
     legalQuestions: project.comparative.scenarios[0]?.legalQuestions ?? [],
     status: "AI_GENERATED_SCENARIO",

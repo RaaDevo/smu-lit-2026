@@ -461,7 +461,7 @@ function Workspace({
                   aria-pressed={project.scenario?.id === s.id}
                   className={`block w-full border-y p-4 text-left transition-colors ${project.scenario?.id === s.id ? "border-[#06054d] bg-[#e8e8ed] text-[#06054d]" : "border-[#c9c9c5] hover:bg-[#e8e8ed]"}`}
                 >
-                  {s.id === project.comparative!.recommendation.scenarioId && (
+                  {project.comparative!.recommendation && s.id === project.comparative!.recommendation.scenarioId && (
                     <span className="metadata mb-2 block text-[#06054d]">AI recommended · {project.comparative!.recommendation.persuasiveWeight} persuasive weight</span>
                   )}
                   <strong>{s.title}</strong>
