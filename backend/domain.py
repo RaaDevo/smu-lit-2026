@@ -216,6 +216,7 @@ class ReportInput(RemediationInput):
     comparative: ComparativeResult
     remediation: RemediationResult
     decisions: list[ReviewDecision] = Field(max_length=100)
+    twin_run: 'TwinRunResult | None' = None
 
 class ResilienceBrief(Model):
     title: Text
@@ -233,6 +234,7 @@ class ResilienceBrief(Model):
     outstanding_questions: list[Text]
     required_actions: list[Text]
     counts: dict[ImpactStatus, int]
+    twin_run: 'TwinRunResult | None' = None
 
 class HealthResponse(Model):
     status: Literal['ok'] = 'ok'
@@ -377,3 +379,4 @@ class ProjectSnapshot(Model):
     remediation: RemediationResult | None
     decisions: list[ReviewDecision] = Field(max_length=100)
     brief: ResilienceBrief | None
+    twin_run: 'TwinRunResult | None' = None

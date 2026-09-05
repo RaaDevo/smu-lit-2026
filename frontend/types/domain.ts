@@ -219,6 +219,7 @@ export type ReportInput = {
   comparative: ComparativeResult;
   remediation: RemediationResult;
   decisions: Array<ReviewDecision>;
+  twinRun: TwinRunResult | null;
 };
 
 export type ResilienceBrief = {
@@ -237,6 +238,7 @@ export type ResilienceBrief = {
   outstandingQuestions: Array<string>;
   requiredActions: Array<string>;
   counts: Record<"UNAFFECTED" | "MONITOR" | "REVIEW_REQUIRED" | "UPDATE_REQUIRED" | "DOWNSTREAM_UPDATE", number>;
+  twinRun: TwinRunResult | null;
 };
 
 export type HealthResponse = {
@@ -406,4 +408,5 @@ export type ProjectSnapshot = {
   remediation: RemediationResult | null;
   decisions: Array<ReviewDecision>;
   brief: ResilienceBrief | null;
+  twinRun: TwinRunResult | null;
 };

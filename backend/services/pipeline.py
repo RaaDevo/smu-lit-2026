@@ -172,7 +172,7 @@ def generate_brief(data):
         outstanding_questions=list(dict.fromkeys([
             *data.scenario.legal_questions, *data.remediation.outstanding_questions,
         ])),
-        required_actions=actions, counts=data.impact.counts)
+        required_actions=actions, counts=data.impact.counts, twin_run=data.twin_run)
 
 
 def validate_snapshot(data):

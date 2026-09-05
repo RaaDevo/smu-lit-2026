@@ -139,6 +139,22 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           ))}
         </div>
       </details>
+      {brief.twinRun && (
+        <details className="brief-appendix">
+          <summary className="cursor-pointer font-semibold">Law Firm Twins audit and client-alert draft</summary>
+          <div className="mt-5 space-y-4 text-sm">
+            <p>{brief.twinRun.evaluator.summary}</p>
+            <p><strong>Client Alert Twin:</strong> {brief.twinRun.clientAlert.status} — {brief.twinRun.clientAlert.draft}</p>
+            {brief.twinRun.evaluator.observations.map((observation) => (
+              <div key={observation.id} className="border-b border-[#c9c9c5] pb-3">
+                <p className="font-semibold">{observation.category.replaceAll("_", " ")} · {observation.severity}</p>
+                <p className="mt-1">{observation.issue}</p>
+                <p className="mt-1 text-[#686868]">{observation.recommendation}</p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </section>
   );
 }

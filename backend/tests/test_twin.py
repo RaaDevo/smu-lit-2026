@@ -104,7 +104,7 @@ def test_project_snapshot_round_trip_and_tamper_rejection():
     impact = client.post('/analyse/stress-test', json=payload).json()
     remediation = client.post('/analyse/remediation', json={**payload, 'impact':impact}).json()
     snapshot = {'seed':seed,'comparative':comparative,'scenario':payload['scenario'],
-        'impact':impact,'remediation':remediation,'decisions':[],'brief':None}
+        'impact':impact,'remediation':remediation,'decisions':[],'brief':None,'twinRun':None}
     restored = client.post('/reports/validate-project',json=snapshot)
     assert restored.status_code == 200, restored.text
     assert restored.json() == snapshot

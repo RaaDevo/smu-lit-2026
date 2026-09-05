@@ -748,6 +748,7 @@ function Workspace({
                     impact: project.impact!,
                     remediation: project.remediation!,
                     decisions: project.decisions,
+                    twinRun: project.twinRun,
                   });
                   setProject((p) => ({ ...p, brief }));
                   setView("brief");
