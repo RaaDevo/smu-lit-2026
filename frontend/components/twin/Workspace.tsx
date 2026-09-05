@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import type {
@@ -16,6 +17,7 @@ import {
 } from "@/lib/project-state";
 import { loadProject, saveProject } from "@/lib/project";
 import { authEnabled, firestoreEnabled } from "@/lib/firebase";
+import { reviewQueue } from "@/lib/review-queue";
 import { AuthControls } from "@/components/AuthControls";
 import { Evidence } from "./Evidence";
 import { Badge, ImpactMap } from "./ImpactMap";
@@ -23,6 +25,10 @@ import { PatchCard } from "./PatchCard";
 import { Brief } from "./Brief";
 
 type View = "evidence" | "scenario" | "impact" | "review" | "brief";
+
+function formatTimestamp(value: string | null) {
+  return value ? new Date(value).toLocaleString() : "Not recorded";
+}
 
 export function TwinApp() {
   const [user, setUser] = useState<User | null>(null);
@@ -39,15 +45,21 @@ export function TwinApp() {
       );
   }, []);
   return (
-    <main className="mx-auto min-w-[1280px] max-w-[1600px] px-8 py-6">
-      <header className="mb-6 flex items-center justify-between border-b border-slate-200 pb-5 print:hidden">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
-            SMU LIT · Regulatory resilience
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Firm Regulatory Resilience Twin
-          </h1>
+    <main className="workspace-shell">
+      <header className="app-header print:hidden">
+        <div className="flex items-center gap-4">
+          <Image
+            src="/donna-dark-grey-wordmark-tight.png"
+            alt="Donna"
+            width={745}
+            height={1016}
+            priority
+            className="h-14 w-auto shrink-0 object-contain"
+          />
+          <div className="border-l border-[#c9c9c5] pl-4">
+            <p className="app-kicker">Donna · Regulatory resilience</p>
+            <h1 className="app-title">Firm Regulatory Resilience Twin</h1>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           {health && (
@@ -101,6 +113,7 @@ function Workspace({
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveNotice, setSaveNotice] = useState("");
+  const [activePatchId, setActivePatchId] = useState("");
   const reviewer = user?.uid ?? "local-lawyer";
   useEffect(() => {
     api
@@ -178,27 +191,44 @@ function Workspace({
     });
   }
   const seed = project.seed;
+  const canStress =
+    project.scenario?.status === "LAWYER_APPROVED_WORKING_ASSUMPTION";
+  const queue = project.remediation
+    ? reviewQueue(project.remediation.patches, project.decisions)
+    : null;
+  const activePatch = queue && project.remediation
+    ? project.remediation.patches.find((patch) => patch.id === activePatchId) ??
+      queue.unresolved[0] ??
+      project.remediation.patches[0]
+    : null;
+  const nextUnresolved = queue && activePatch && project.remediation
+    ? queue.unresolved.find(
+        (patch) =>
+          project.remediation!.patches.findIndex((item) => item.id === patch.id) >
+          project.remediation!.patches.findIndex((item) => item.id === activePatch.id),
+      ) ?? queue.unresolved[0]
+    : null;
+
   if (!seed)
     return (
       <p role="status">
         {error || "Loading curated development and five synthetic assets…"}
       </p>
     );
+
   const selectedFinding = project.impact?.findings.find(
     (f) => f.assetId === selectedAsset,
   );
   const selected = seed.firmAssets.find((a) => a.id === selectedAsset);
-  const canStress =
-    project.scenario?.status === "LAWYER_APPROVED_WORKING_ASSUMPTION";
 
   return (
     <>
-      <div className="mb-5 flex items-center justify-between print:hidden">
+      <div className="mb-6 flex items-end justify-between print:hidden">
         <div>
-          <h2 className="font-semibold">
+          <h2 className="workspace-heading">
             Online safety · Proactive stress test
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="workspace-meta mt-2">
             1 curated development · 5 synthetic artefacts · 1 working assumption
           </p>
         </div>
@@ -243,26 +273,26 @@ function Workspace({
         </div>
       </div>
       {saveNotice && (
-        <p role="status" className="mb-4 text-sm text-slate-600 print:hidden">
+        <p role="status" className="notice notice-info print:hidden">
           {saveNotice}
         </p>
       )}
       {health.aiMode === "mock" && (
-        <p className="mb-4 rounded border border-blue-200 bg-blue-50 px-4 py-2 text-sm print:hidden">
+        <p className="notice notice-info print:hidden">
           Demo Mode uses deterministic fixtures. Edited or alternative scenarios
           receive conservative review flags. Live mode analyses supplied text
           through OpenRouter.
         </p>
       )}
       <nav
-        className="mb-5 flex gap-2 border-b border-slate-200 pb-4 print:hidden"
+        className="stage-nav print:hidden"
         aria-label="Stress-test stages"
       >
         {(["evidence", "scenario", "impact", "review", "brief"] as const).map(
           (item, i) => (
             <button
               key={item}
-              className={view === item ? "button-primary" : "button-secondary"}
+              className={`stage-button ${view === item ? "stage-button-active" : ""}`}
               disabled={
                 !!busy ||
                 (item === "scenario" && !project.comparative) ||
@@ -290,7 +320,7 @@ function Workspace({
         <p
           role="status"
           aria-live="polite"
-          className="mb-4 rounded border border-blue-200 bg-blue-50 p-3"
+          className="notice notice-info"
         >
           {busy}…{" "}
           {busy.startsWith("Analysing")
@@ -301,30 +331,52 @@ function Workspace({
       {error && (
         <p
           role="alert"
-          className="mb-4 rounded border border-red-200 bg-red-50 p-4"
+          className="notice border-red-700 bg-red-50 text-red-950"
         >
           {error} Retry the operation using its button. For deterministic
           fallback, set USE_MOCK_AI=true on the backend and restart it.
         </p>
       )}
       {notice && (
-        <p role="status" className="mb-4 text-sm text-slate-600">
+        <p role="status" className="mb-4 border-l-2 border-[#06054d] pl-3 text-sm text-[#686868]">
           {notice}
         </p>
+      )}
+      {canStress && project.scenario && ["impact", "review", "brief"].includes(view) && (
+        <section className="assumption-strip print:hidden">
+          <div>
+            <p className="metadata">
+              Approved hypothetical
+            </p>
+            <h3 className="mt-1 text-lg font-semibold tracking-[-0.015em]">{project.scenario.title}</h3>
+            <p className="mt-1 max-w-4xl text-sm leading-6 text-[#181818]">
+              {project.scenario.description}
+            </p>
+            <p className="metadata mt-2">
+              Lawyer approved by {project.scenario.approvedBy} · {formatTimestamp(project.scenario.approvedAt)}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Badge status={project.scenario.status} />
+            <button className="button-secondary" onClick={() => setView("scenario")}>
+              Return to assumption
+            </button>
+          </div>
+        </section>
       )}
 
       {view === "evidence" && (
         <section className="grid grid-cols-[1fr_400px] gap-6">
-          <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <div className="panel pt-0">
             <Badge status={seed.development.status} />
-            <h2 className="my-3 text-2xl font-semibold">
+            <h2 className="my-4 font-serif text-3xl font-semibold tracking-[-0.025em]">
               {seed.development.title}
             </h2>
-            <p className="mb-3 text-sm text-slate-500">
+            <p className="metadata mb-4">
               {seed.development.jurisdiction} · {seed.development.date}
             </p>
             <p className="leading-7">{seed.development.summary}</p>
-            <p className="my-4 rounded bg-amber-50 p-3 text-sm leading-6">
+            <p className="notice notice-warning my-5">
               {seed.evidenceNote}
             </p>
             <Evidence
@@ -355,14 +407,14 @@ function Workspace({
               Analyse evidence & generate scenarios
             </button>
           </div>
-          <aside className="rounded-lg border border-slate-200 bg-white p-5">
-            <h3 className="mb-3 font-semibold">Synthetic firm corpus</h3>
+          <aside className="panel panel-rail pt-0">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.1em] text-[#06054d]">Synthetic firm corpus</h3>
             {seed.firmAssets.map((a) => (
-              <details key={a.id} className="border-b py-3">
+              <details key={a.id} className="border-b border-[#c9c9c5] py-3">
                 <summary className="cursor-pointer text-sm font-medium">
                   {a.title}
                 </summary>
-                <p className="my-2 text-xs text-slate-500">
+                <p className="metadata my-2">
                   {a.owner} · {a.version}
                 </p>
                 {a.sections.map((s) => (
@@ -380,9 +432,9 @@ function Workspace({
         <section className="grid grid-cols-[400px_1fr] gap-6">
           <aside className="space-y-4">
             {project.comparative.assessments.map((a, i) => (
-              <article key={i} className="rounded-lg border bg-white p-5">
+              <article key={i} className="panel panel-rail py-4">
                 <h3 className="font-semibold">{a.jurisdiction}</h3>
-                <p className="my-2 text-xs uppercase text-slate-500">
+                <p className="metadata my-2">
                   {a.classification} · {a.relevance} relevance
                 </p>
                 <p className="mb-3 text-sm leading-6">{a.reasoning}</p>
@@ -390,11 +442,11 @@ function Workspace({
               </article>
             ))}
           </aside>
-          <div className="rounded-lg border bg-white p-6">
-            <h2 className="text-xl font-semibold">
+          <div className="panel pt-0">
+            <h2 className="font-serif text-2xl font-semibold tracking-[-0.02em]">
               Choose one Singapore working assumption
             </h2>
-            <p className="my-2 text-sm text-slate-600">
+            <p className="my-3 max-w-3xl text-sm leading-6 text-[#686868]">
               These are possible scenarios, not predictions or current Singapore
               law. Editing invalidates prior approval and downstream results.
             </p>
@@ -405,7 +457,7 @@ function Workspace({
                   disabled={!!busy}
                   onClick={() => setProject((p) => selectScenario(p, s))}
                   aria-pressed={project.scenario?.id === s.id}
-                  className={`block w-full rounded border p-4 text-left ${project.scenario?.id === s.id ? "border-slate-900 bg-slate-50" : "border-slate-200"}`}
+                  className={`block w-full border-y p-4 text-left transition-colors ${project.scenario?.id === s.id ? "border-[#06054d] bg-[#e8e8ed] text-[#06054d]" : "border-[#c9c9c5] hover:bg-[#e8e8ed]"}`}
                 >
                   <strong>{s.title}</strong>
                   <span className="mt-2 block text-sm">{s.description}</span>
@@ -418,7 +470,7 @@ function Workspace({
                 <label className="mt-4 block text-sm font-semibold">
                   Working assumption
                   <textarea
-                    className="mt-2 min-h-32 w-full rounded border border-slate-300 p-3 font-normal leading-6"
+                    className="field-control min-h-32 leading-6"
                     disabled={!!busy}
                     value={project.scenario.description}
                     onChange={(e) =>
@@ -479,7 +531,7 @@ function Workspace({
                 {canStress && (
                   <p className="mt-3 text-xs text-slate-500">
                     Approved by {project.scenario.approvedBy} ·{" "}
-                    {project.scenario.approvedAt}
+                    {formatTimestamp(project.scenario.approvedAt)}
                   </p>
                 )}
               </>
@@ -500,13 +552,13 @@ function Workspace({
                 </span>
               ))}
           </div>
-          <p className="mb-4 text-sm text-slate-600">
+          <p className="mb-5 border-l-2 border-[#06054d] pl-3 text-sm leading-6 text-[#686868]">
             All impacts are conditional on the approved assumption. Direct
             semantic status and inherited dependency impact are shown
             separately.
           </p>
           <div className="grid grid-cols-[850px_1fr] gap-5">
-            <div className="rounded-lg border bg-white p-4">
+            <div className="panel border-t-2 border-[#181818] px-4 pt-4">
               <ImpactMap
                 seed={seed}
                 impact={project.impact}
@@ -515,14 +567,14 @@ function Workspace({
               />
             </div>
             {selected && selectedFinding && (
-              <aside className="rounded-lg border bg-white p-5">
-                <h3 className="mb-2 font-semibold">{selected.title}</h3>
+              <aside className="panel border-t-2 border-[#181818] pt-0">
+                <h3 className="mb-3 text-lg font-semibold tracking-[-0.015em]">{selected.title}</h3>
                 <Badge status={selectedFinding.status} />
                 <p className="my-2 text-xs">
                   Direct: {selectedFinding.directStatus.replaceAll("_", " ")} ·{" "}
                   {selectedFinding.severity} severity
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="metadata">
                   Model confidence:{" "}
                   {Math.round(selectedFinding.confidence * 100)}% — not legal
                   certainty
@@ -530,7 +582,7 @@ function Workspace({
                 <p className="my-3 text-sm leading-6">
                   {selectedFinding.reasoning}
                 </p>
-                <p className="mb-3 rounded bg-slate-50 p-3 text-sm leading-6">
+                <p className="mb-4 border-y border-[#c9c9c5] bg-[#f8f8f6] p-4 text-sm leading-6">
                   <strong>{selectedFinding.section}</strong>
                   <br />
                   {
@@ -568,6 +620,7 @@ function Workspace({
                     decisions: [],
                     brief: null,
                   }));
+                  setActivePatchId(remediation.patches[0]?.id ?? "");
                   setView("review");
                 },
               )
@@ -579,8 +632,8 @@ function Workspace({
       )}
 
       {view === "review" && project.remediation && (
-        <section className="space-y-5">
-          <div className="rounded border border-amber-300 bg-amber-50 p-5">
+        <section>
+          <div className="notice notice-warning">
             <h2 className="mb-2 font-semibold">Adversarial review</h2>
             {project.remediation.reviewFindings.map((f) => (
               <div className="mb-3" key={f.id}>
@@ -595,40 +648,87 @@ function Workspace({
               </div>
             ))}
           </div>
-          {project.remediation.patches.map((p) => (
-            <PatchCard
-              key={p.id}
-              patch={p}
-              sources={seed.sources}
-              decisions={project.decisions}
-              busy={!!busy}
-              onReview={handleReview}
-            />
-          ))}
-          <button
-            className="button-primary"
-            disabled={!!busy}
-            onClick={() =>
-              run("Assembling the resilience brief", async () => {
-                const brief = await api.generateBrief({
-                  ...stressInput(),
-                  development: seed.development,
-                  comparative: project.comparative!,
-                  impact: project.impact!,
-                  remediation: project.remediation!,
-                  decisions: project.decisions,
-                });
-                setProject((p) => ({ ...p, brief }));
-                setView("brief");
-              })
-            }
-          >
-            Generate Regulatory Resilience Brief
-          </button>
-          <p className="text-sm text-slate-500">
-            Pending, rejected and escalated proposals remain visible as
-            unresolved actions in the brief.
-          </p>
+          {queue && activePatch && (
+            <div className="grid grid-cols-[280px_1fr] gap-5">
+              <aside className="panel panel-rail h-fit pt-0">
+                <div className="border-b border-[#181818] pb-4">
+                  <p className="metadata">
+                    Review queue
+                  </p>
+                  <p className="mt-1 font-serif text-2xl font-semibold text-[#06054d]" aria-live="polite">
+                    {queue.reviewed} of {queue.total} reviewed
+                  </p>
+                  <p className="mt-1 text-sm text-[#686868]">
+                    {queue.unresolved.length} unresolved
+                  </p>
+                </div>
+                <div className="mt-3 space-y-2" aria-label="Patch review queue">
+                  {project.remediation.patches.map((patch, index) => {
+                    const decision = queue.statusByPatchId[patch.id];
+                    const isActive = patch.id === activePatch.id;
+                    return (
+                      <button
+                        key={patch.id}
+                        className={`queue-item ${isActive ? "queue-item-active" : ""}`}
+                        onClick={() => setActivePatchId(patch.id)}
+                        aria-current={isActive ? "step" : undefined}
+                      >
+                        <span className="metadata block">
+                          {index + 1}. {decision ? "Reviewed" : "Unresolved"}
+                        </span>
+                        <span className="mt-1 block font-semibold">
+                          {seed.firmAssets.find((asset) => asset.id === patch.assetId)?.title ?? patch.assetId}
+                        </span>
+                        <span className="mt-1 block text-xs text-[#686868]">
+                          {patch.section}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  className="button-secondary mt-4 w-full"
+                  disabled={!!busy || queue.unresolved.length === 0}
+                  onClick={() => setActivePatchId(nextUnresolved?.id ?? activePatch.id)}
+                >
+                  Next unresolved
+                </button>
+              </aside>
+              <PatchCard
+                key={activePatch.id}
+                patch={activePatch}
+                sources={seed.sources}
+                decisions={project.decisions}
+                busy={!!busy}
+                onReview={handleReview}
+              />
+            </div>
+          )}
+          <div className="mt-6 flex items-center justify-between gap-4 border-t-2 border-[#181818] pt-5">
+            <p className="text-sm text-[#686868]">
+              Pending, rejected and escalated proposals remain visible as unresolved actions in the brief.
+            </p>
+            <button
+              className="button-primary shrink-0"
+              disabled={!!busy}
+              onClick={() =>
+                run("Assembling the resilience brief", async () => {
+                  const brief = await api.generateBrief({
+                    ...stressInput(),
+                    development: seed.development,
+                    comparative: project.comparative!,
+                    impact: project.impact!,
+                    remediation: project.remediation!,
+                    decisions: project.decisions,
+                  });
+                  setProject((p) => ({ ...p, brief }));
+                  setView("brief");
+                })
+              }
+            >
+              Generate Regulatory Resilience Brief
+            </button>
+          </div>
         </section>
       )}
       {view === "brief" && project.brief && <Brief brief={project.brief} />}

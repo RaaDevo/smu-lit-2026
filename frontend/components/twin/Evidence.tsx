@@ -8,22 +8,22 @@ export function Evidence({
   sources: LegalSource[];
 }) {
   return (
-    <div className="space-y-2">
+    <div className="mt-3">
       {references.map((reference, i) => {
         const source = sources.find((s) => s.id === reference.sourceId);
         return (
           <details
-            className="rounded border border-slate-200 p-3 text-sm"
+            className="evidence-item"
             key={`${reference.sourceId}-${i}`}
           >
             <summary className="cursor-pointer font-medium">
               {source?.authority ?? "Unknown source"} · {reference.sourceId}
             </summary>
-            <p className="mt-2 text-xs uppercase text-slate-500">
+            <p className="evidence-meta">
               {source?.jurisdiction} ·{" "}
               {source?.legalStatus.replaceAll("_", " ")} · {source?.date}
             </p>
-            <p className="my-2 text-xs font-semibold">
+            <p className="my-2 text-xs font-semibold text-[#181818]">
               {source?.textKind === "CURATOR_SUMMARY"
                 ? "Curator summary passage (not a statutory quotation)"
                 : "Source excerpt"}
@@ -31,10 +31,10 @@ export function Evidence({
             <p className="whitespace-pre-wrap leading-6">
               {reference.relevantText}
             </p>
-            <p className="my-2 text-slate-600">{reference.explanation}</p>
+            <p className="my-2 text-[#686868]">{reference.explanation}</p>
             {source && (
               <a
-                className="text-blue-800 underline"
+                className="font-semibold underline"
                 href={source.url}
                 target="_blank"
                 rel="noreferrer"

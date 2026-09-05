@@ -1,16 +1,21 @@
 import type { ImpactResult, SeedPack } from "@/types/domain";
 
 export const statusStyles: Record<string, string> = {
-  UPDATE_REQUIRED: "border-red-300 bg-red-50 text-red-900",
-  REVIEW_REQUIRED: "border-amber-300 bg-amber-50 text-amber-900",
-  DOWNSTREAM_UPDATE: "border-blue-300 bg-blue-50 text-blue-900",
-  UNAFFECTED: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  MONITOR: "border-slate-300 bg-slate-50 text-slate-700",
+  UPDATE_REQUIRED: "border-red-700 bg-red-50 text-red-950",
+  REVIEW_REQUIRED: "border-amber-700 bg-amber-50 text-amber-950",
+  DOWNSTREAM_UPDATE: "border-[#06054d] bg-[#e8e8ed] text-[#06054d]",
+  UNAFFECTED: "border-[#777] bg-[#f1f1f1] text-[#181818]",
+  MONITOR: "border-[#777] bg-[#f1f1f1] text-[#181818]",
+  APPROVED: "border-[#06054d] bg-[#06054d] text-[#f1f1f1]",
+  EDITED: "border-[#06054d] bg-[#e8e8ed] text-[#06054d]",
+  ESCALATED: "border-amber-700 bg-amber-50 text-amber-950",
+  REJECTED: "border-red-700 bg-red-50 text-red-950",
+  PENDING_REVIEW: "border-[#777] bg-[#f1f1f1] text-[#181818]",
 };
 export function Badge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-block rounded border px-2 py-1 text-xs font-semibold ${statusStyles[status] ?? "border-slate-300 bg-slate-50"}`}
+      className={`inline-block border px-2 py-1 text-[11px] font-bold tracking-[0.06em] ${statusStyles[status] ?? "border-[#777] bg-[#f1f1f1] text-[#181818]"}`}
     >
       {status.replaceAll("_", " ")}
     </span>
@@ -37,7 +42,7 @@ export function ImpactMap({
   ];
   return (
     <div>
-      <p className="mb-3 text-sm text-slate-600">
+      <p className="mb-4 border-l-2 border-[#06054d] pl-3 text-sm text-[#686868]">
         Approved assumption → direct semantic findings → downstream review
         requirements
       </p>
@@ -60,7 +65,7 @@ export function ImpactMap({
               refY="4"
               orient="auto"
             >
-              <path d="M0,0 L8,4 L0,8" fill="#64748b" />
+              <path d="M0,0 L8,4 L0,8" fill="#06054d" />
             </marker>
           </defs>
           {seed.dependencies.map((edge) => {
@@ -80,7 +85,7 @@ export function ImpactMap({
                 key={edge.id}
                 d={`M ${a.x + 120} ${a.y + 115} C ${a.x + 120} ${a.y + 155}, ${b.x + 120} ${b.y - 20}, ${b.x + 120} ${b.y}`}
                 fill="none"
-                stroke="#64748b"
+                stroke="#181818"
                 strokeWidth="2"
                 markerEnd="url(#arrow)"
               />
@@ -96,7 +101,7 @@ export function ImpactMap({
               onClick={() => onSelect(asset.id)}
               aria-pressed={selected === asset.id}
               style={{ left: positions[i].x, top: positions[i].y }}
-              className={`absolute min-h-[115px] w-[240px] rounded-lg border-2 p-3 text-left ${statusStyles[finding.status]} ${selected === asset.id ? "ring-2 ring-slate-900 ring-offset-2" : ""}`}
+              className={`absolute min-h-[115px] w-[240px] border-2 p-4 text-left ${statusStyles[finding.status]} ${selected === asset.id ? "ring-2 ring-[#06054d] ring-offset-2 ring-offset-[#f1f1f1]" : ""}`}
             >
               <span className="block text-xs font-semibold">
                 {finding.status.replaceAll("_", " ")}
@@ -107,23 +112,23 @@ export function ImpactMap({
           );
         })}
       </div>
-      <div className="space-y-1 text-sm">
+      <div className="mt-4 border-t border-[#c9c9c5] pt-3 text-sm">
         {seed.dependencies.map((edge) => (
           <p key={edge.id}>
             <button
-              className="underline"
+              className="font-semibold underline"
               onClick={() => onSelect(edge.upstreamAssetId)}
             >
               {edge.upstreamAssetId}
             </button>
             {" → "}
             <button
-              className="underline"
+              className="font-semibold underline"
               onClick={() => onSelect(edge.downstreamAssetId)}
             >
               {edge.downstreamAssetId}
             </button>
-            <span className="ml-2 text-slate-500">{edge.explanation}</span>
+            <span className="ml-2 text-[#686868]">{edge.explanation}</span>
           </p>
         ))}
       </div>

@@ -82,7 +82,7 @@ export function AuthControls({ onUserChange }: AuthControlsProps) {
     <div className="flex flex-col items-start gap-2 sm:items-end">
       {user ? (
         <div className="flex items-center gap-3">
-          <span className="max-w-48 truncate text-sm text-slate-600">
+          <span className="max-w-48 truncate text-xs font-semibold uppercase tracking-[0.08em] text-[#686868]">
             {user.displayName ?? user.email ?? "Signed in"}
           </span>
           <button className="button-secondary" disabled={busy} onClick={handleSignOut}>
@@ -95,7 +95,7 @@ export function AuthControls({ onUserChange }: AuthControlsProps) {
         </button>
       )}
       {error && (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       )}

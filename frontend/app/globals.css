@@ -2,51 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
+:root { color-scheme: light; --navy: #06054d; --ink: #181818; --canvas: #f1f1f1; --paper: #fafafa; --muted: #686868; --rule: #c9c9c5; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; background: var(--canvas); color: var(--ink); font-family: Aptos, "Segoe UI Variable", "Segoe UI", sans-serif; font-size: 15px; line-height: 1.55; }
+::selection { background: #c9c9ed; color: var(--navy); }
+button, input, textarea { font: inherit; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+a { color: var(--navy); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-button:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid #475569;
-  outline-offset: 2px;
-}
-
-@media print {
-  body,
-  main {
-    min-width: 0 !important;
-    background: white;
-  }
-  .brief {
-    font-size: 11pt;
-  }
-  .brief details {
-    break-inside: avoid;
-  }
-  .brief article {
-    break-inside: avoid;
-  }
-}
+@media print { body, main { min-width: 0 !important; background: white; } .brief { font-size: 11pt; } .brief details, .brief article { break-inside: avoid; } }
 
 @layer components {
-  .button-primary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .button-secondary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
-  }
+  .button-primary { @apply inline-flex min-h-10 items-center justify-center border border-[#06054d] bg-[#06054d] px-4 py-2 text-sm font-semibold text-[#f1f1f1] transition-colors hover:border-[#181818] hover:bg-[#181818] disabled:cursor-not-allowed disabled:border-[#a6a6a3] disabled:bg-[#a6a6a3] disabled:text-[#f1f1f1]; border-radius: 2px; letter-spacing: .01em; }
+  .button-secondary { @apply inline-flex min-h-10 items-center justify-center border border-[#181818] bg-transparent px-4 py-2 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#181818] hover:text-[#f1f1f1] disabled:cursor-not-allowed disabled:border-[#aaa] disabled:text-[#888]; border-radius: 2px; letter-spacing: .01em; }
+  .workspace-shell { @apply mx-auto min-w-[1280px] max-w-[1600px] px-8 py-7; }
+  .app-header { @apply sticky top-0 z-40 -mx-8 mb-7 flex items-center justify-between border-b-2 border-[#181818] bg-[#f1f1f1] px-8 py-3; }
+  .app-kicker { @apply mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#06054d]; }
+  .app-title { font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif; @apply text-[2rem] font-semibold leading-none tracking-[-0.025em] text-[#181818]; }
+  .workspace-heading { @apply text-lg font-semibold tracking-[-0.015em] text-[#181818]; }
+  .workspace-meta, .metadata { @apply text-xs font-medium uppercase tracking-[0.08em] text-[#686868]; }
+  .stage-nav { @apply mb-6 flex gap-0 border-y border-[#181818] py-2; }
+  .stage-button { @apply relative min-h-10 border-0 bg-transparent px-4 text-left text-xs font-bold uppercase tracking-[0.08em] text-[#686868] transition-colors hover:text-[#06054d] disabled:cursor-not-allowed disabled:text-[#a0a09c]; }
+  .stage-button-active { @apply bg-[#06054d] text-[#f1f1f1] hover:text-[#f1f1f1]; }
+  .panel { @apply border-y border-[#181818] bg-transparent py-5; }
+  .panel + .panel { @apply mt-5; }
+  .panel-rail { @apply border-[#c9c9c5]; }
+  .notice { @apply mb-5 border-l-2 px-4 py-3 text-sm leading-6; }
+  .notice-info { @apply border-[#06054d] bg-[#e7e7ee] text-[#181818]; }
+  .notice-warning { @apply border-[#9a6500] bg-[#f3ead1] text-[#382600]; }
+  .assumption-strip { @apply mb-6 flex items-start justify-between gap-6 border-y-2 border-[#06054d] bg-[#e8e8ed] px-5 py-4; }
+  .evidence-item { @apply border-b border-[#c9c9c5] py-3 text-sm; }
+  .evidence-item summary { @apply cursor-pointer font-semibold text-[#181818]; }
+  .evidence-item[open] summary { @apply text-[#06054d]; }
+  .evidence-meta { @apply mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#686868]; }
+  .field-control { @apply mt-1 w-full border border-[#181818] bg-[#fafafa] p-3 font-normal text-[#181818] outline-none focus:border-[#06054d]; border-radius: 0; }
+  .queue-item { @apply w-full border-b border-[#c9c9c5] px-0 py-3 text-left text-sm transition-colors hover:text-[#06054d]; }
+  .queue-item-active { @apply border-l-2 border-[#06054d] bg-[#e7e7ee] px-3 text-[#06054d]; }
+  .comparison { @apply min-h-28 whitespace-pre-wrap border-y border-[#c9c9c5] bg-[#f8f8f6] p-4 text-sm leading-6 text-[#181818]; }
+  .comparison-proposal { @apply border-[#06054d] bg-[#eeeef4]; }
+  .brief-executive { @apply border-t-4 border-[#06054d] bg-[#06054d] px-7 py-6 text-[#f1f1f1]; }
+  .brief-appendix { @apply border-y border-[#c9c9c5] bg-transparent py-4; }
+  .brief-appendix summary { @apply cursor-pointer font-semibold text-[#181818]; }
 }
