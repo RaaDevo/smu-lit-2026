@@ -12,6 +12,7 @@ import type {
   ResilienceBrief,
   SeedPack,
   StressInput,
+  TwinRunResult,
 } from "@/types/domain";
 
 const API_URL = (
@@ -54,6 +55,8 @@ export const compare = (data: ComparativeInput) =>
   request<ComparativeResult>("/analyse/comparative", data);
 export const stressTest = (data: StressInput) =>
   request<ImpactResult>("/analyse/stress-test", data);
+export const runTwins = (data: StressInput) =>
+  request<TwinRunResult>("/analyse/twin-run", data);
 export const remediate = (data: RemediationInput) =>
   request<RemediationResult>("/analyse/remediation", data);
 export const reviewPatch = (data: PatchReviewInput) =>

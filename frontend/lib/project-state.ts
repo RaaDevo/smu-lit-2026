@@ -6,6 +6,7 @@ import type {
   ReviewDecision,
   Scenario,
   SeedPack,
+  TwinRunResult,
 } from "../types/domain.ts";
 
 export type ProjectState = {
@@ -14,6 +15,7 @@ export type ProjectState = {
   scenario: Scenario | null;
   impact: ImpactResult | null;
   remediation: RemediationResult | null;
+  twinRun: TwinRunResult | null;
   decisions: ReviewDecision[];
   brief: ResilienceBrief | null;
 };
@@ -25,6 +27,7 @@ export function initialProject(): ProjectState {
     scenario: null,
     impact: null,
     remediation: null,
+    twinRun: null,
     decisions: [],
     brief: null,
   };
@@ -43,10 +46,42 @@ export function selectScenario(
       approvedAt: null,
     },
     impact: null,
+    twinRun: null,
     remediation: null,
     decisions: [],
     brief: null,
   };
+}
+
+export function applyComparativeResult(
+  project: ProjectState,
+  comparative: ComparativeResult,
+): ProjectState {
+  const recommended = comparative.scenarios.find(
+    (scenario) => scenario.id === comparative.recommendation.scenarioId,
+  );
+  if (!recommended) throw new Error("The recommendation does not match a scenario.");
+  return selectScenario({ ...initialProject(), seed: project.seed, comparative }, recommended);
+}
+
+export function createLawyerAssumption(
+  project: ProjectState,
+  description = "",
+): ProjectState {
+  if (!project.comparative) throw new Error("Analyse comparative evidence first.");
+  const recommendation = project.comparative.recommendation;
+  return selectScenario(project, {
+    id: "lawyer-assumption",
+    title: "Lawyer-authored working assumption",
+    description,
+    assumptions: ["Lawyer-authored hypothetical; scope and commencement require legal review."],
+    evidence: recommendation.evidence,
+    uncertainty: "HIGH",
+    legalQuestions: project.comparative.scenarios[0]?.legalQuestions ?? [],
+    status: "AI_GENERATED_SCENARIO",
+    approvedBy: null,
+    approvedAt: null,
+  });
 }
 
 export function editScenario(

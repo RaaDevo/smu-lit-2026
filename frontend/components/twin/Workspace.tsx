@@ -14,6 +14,8 @@ import {
   selectScenario,
   editScenario,
   approveScenario,
+  applyComparativeResult,
+  createLawyerAssumption,
 } from "@/lib/project-state";
 import { loadProject, saveProject } from "@/lib/project";
 import { authEnabled, firestoreEnabled } from "@/lib/firebase";
@@ -398,7 +400,7 @@ function Workspace({
                       development: seed.development,
                       sources: seed.sources,
                     });
-                    setProject({ ...initialProject(), seed, comparative });
+                    setProject((project) => applyComparativeResult({ ...project, seed }, comparative));
                     setView("scenario");
                   },
                 )
@@ -459,11 +461,21 @@ function Workspace({
                   aria-pressed={project.scenario?.id === s.id}
                   className={`block w-full border-y p-4 text-left transition-colors ${project.scenario?.id === s.id ? "border-[#06054d] bg-[#e8e8ed] text-[#06054d]" : "border-[#c9c9c5] hover:bg-[#e8e8ed]"}`}
                 >
+                  {s.id === project.comparative!.recommendation.scenarioId && (
+                    <span className="metadata mb-2 block text-[#06054d]">AI recommended · {project.comparative!.recommendation.persuasiveWeight} persuasive weight</span>
+                  )}
                   <strong>{s.title}</strong>
                   <span className="mt-2 block text-sm">{s.description}</span>
                 </button>
               ))}
             </div>
+            <button
+              className="button-secondary"
+              disabled={!!busy}
+              onClick={() => setProject((p) => createLawyerAssumption(p))}
+            >
+              Enter my own assumption
+            </button>
             {project.scenario && (
               <>
                 <Badge status={project.scenario.status} />
@@ -510,12 +522,13 @@ function Workspace({
                     disabled={!!busy || !canStress}
                     onClick={() =>
                       run(
-                        "Analysing direct impacts and propagating dependencies",
+                        "Running Triage, Practice Group, Sign-off, Client Alert and Evaluator agents",
                         async () => {
-                          const impact = await api.stressTest(stressInput());
+                          const twinRun = await api.runTwins(stressInput());
                           setProject((p) => ({
                             ...p,
-                            impact,
+                            twinRun,
+                            impact: twinRun.impact,
                             remediation: null,
                             decisions: [],
                             brief: null,
@@ -525,7 +538,7 @@ function Workspace({
                       )
                     }
                   >
-                    Stress Test Firm
+                    Run Firm and Law Firm Twins
                   </button>
                 </div>
                 {canStress && (
@@ -542,6 +555,21 @@ function Workspace({
 
       {view === "impact" && project.impact && (
         <section>
+          {project.twinRun && (
+            <details className="brief-appendix mb-5" open>
+              <summary className="cursor-pointer font-semibold">Law Firm Twin run · {project.twinRun.evaluator.runComplete ? "complete" : "requires attention"}</summary>
+              <div className="mt-4 grid grid-cols-5 gap-3 text-sm">
+                {project.twinRun.auditRecords.map((record) => (
+                  <div key={record.invocationId} className="border-t border-[#c9c9c5] pt-2">
+                    <p className="metadata">{record.executionMode}</p>
+                    <p className="font-semibold">{record.agent.replaceAll("_", " ")}</p>
+                    <p className="mt-1 text-xs text-[#686868]">Attempt {record.attempt} · {record.profileVersion}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-sm leading-6">{project.twinRun.evaluator.summary}</p>
+            </details>
+          )}
           <div className="mb-4 flex flex-wrap items-center gap-3">
             {Object.entries(project.impact.counts)
               .filter(([, n]) => n > 0)
