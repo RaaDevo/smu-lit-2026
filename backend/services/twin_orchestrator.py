@@ -107,17 +107,30 @@ async def run_twins(data: StressInput) -> TwinRunResult:
     practice, record = await _invoke(PRACTICE_GROUP_SPEC, practice_input, PracticeGroupAgentOutput, lambda: _practice(data, triage), run_id, 2, 1); audit.append(record)
     signoff_input = SignOffAgentInput(run_id=run_id, scenario=data.scenario, sources=data.sources, triage=triage, practice_group=practice)
     signoff, record = await _invoke(SIGN_OFF_SPEC, signoff_input, SignOffAgentOutput, lambda: _signoff(practice), run_id, 3, 1); audit.append(record)
+    practices, signoffs = [practice], [signoff]
+    if signoff.decision == 'RETURNED':
+        reconsideration = signoff.reconsideration
+        if reconsideration is None:
+            raise ValueError('Sign-off returned findings without a reconsideration request.')
+        practice_input = PracticeGroupAgentInput(**data.model_dump(), run_id=run_id, triage=triage, reconsideration=reconsideration)
+        practice, record = await _invoke(PRACTICE_GROUP_SPEC, practice_input, PracticeGroupAgentOutput,
+            lambda: _practice(data, triage, reconsideration), run_id, 4, 2); audit.append(record)
+        practices.append(practice)
+        signoff_input = SignOffAgentInput(run_id=run_id, scenario=data.scenario, sources=data.sources, triage=triage, practice_group=practice)
+        signoff, record = await _invoke(SIGN_OFF_SPEC, signoff_input, SignOffAgentOutput,
+            lambda: _signoff(practice), run_id, 5, 2); audit.append(record)
+        signoffs.append(signoff)
     client_input = ClientAlertAgentInput(run_id=run_id, scenario=data.scenario,
         signed_findings=[item for item in practice.findings if item.id in signoff.approved_finding_ids], sign_off=signoff)
-    client_alert, record = await _invoke(CLIENT_ALERT_SPEC, client_input, ClientAlertAgentOutput, lambda: _client_alert(signoff, practice), run_id, 4, 1); audit.append(record)
+    client_alert, record = await _invoke(CLIENT_ALERT_SPEC, client_input, ClientAlertAgentOutput, lambda: _client_alert(signoff, practice), run_id, len(audit) + 1, 1); audit.append(record)
     direct = DirectResult(findings=practice.findings)
     validate_direct(direct, data)
     impact = propagate(direct, data.dependencies, run_hash)
     evaluator_output = _evaluator(data, impact, audit)
     evaluator_input = EvaluatorAgentInput(run_id=run_id, scenario=data.scenario,
         audit_records=audit, firm_assets=data.firm_assets, dependencies=data.dependencies)
-    evaluator, record = await _invoke(EVALUATOR_SPEC, evaluator_input, EvaluatorAgentOutput, lambda: evaluator_output, run_id, 5, 1); audit.append(record)
+    evaluator, record = await _invoke(EVALUATOR_SPEC, evaluator_input, EvaluatorAgentOutput, lambda: evaluator_output, run_id, len(audit) + 1, 1); audit.append(record)
     return TwinRunResult(run_id=run_id, context_hash=run_hash,
         profiles=[spec.profile for spec in (TRIAGE_SPEC, PRACTICE_GROUP_SPEC, SIGN_OFF_SPEC, CLIENT_ALERT_SPEC, EVALUATOR_SPEC)],
-        triage=triage, practice_group_attempts=[practice], sign_off_attempts=[signoff], client_alert=client_alert,
+        triage=triage, practice_group_attempts=practices, sign_off_attempts=signoffs, client_alert=client_alert,
         evaluator=evaluator, impact=impact, audit_records=audit)
