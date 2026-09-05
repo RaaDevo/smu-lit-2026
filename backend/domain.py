@@ -57,6 +57,13 @@ class ComparativeAssessment(Model):
     evidence: list[EvidenceReference] = Field(min_length=1)
     confidence: Confidence
 
+class ScenarioRecommendation(Model):
+    scenario_id: Text
+    rationale: Text
+    persuasive_weight: Severity
+    evidence: list[EvidenceReference] = Field(min_length=1)
+    confidence: Confidence
+
 class Scenario(Model):
     id: Text
     title: Text
@@ -112,6 +119,7 @@ class SeedPack(ComparativeInput):
 class ComparativeResult(Model):
     assessments: list[ComparativeAssessment] = Field(min_length=2, max_length=4)
     scenarios: list[Scenario] = Field(min_length=1, max_length=3)
+    recommendation: ScenarioRecommendation
 
 class StressInput(Model):
     scenario: Scenario

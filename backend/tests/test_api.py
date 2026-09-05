@@ -25,6 +25,18 @@ def test_empty_text_is_rejected() -> None:
     assert response.status_code == 422
 
 
+def test_comparative_result_names_an_evidenced_recommendation() -> None:
+    seed = client.get('/seed').json()
+    response = client.post('/analyse/comparative', json={
+        'development': seed['development'], 'sources': seed['sources'],
+    })
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body['recommendation']['scenarioId'] in {item['id'] for item in body['scenarios']}
+    assert body['recommendation']['persuasiveWeight'] == 'HIGH'
+    assert body['recommendation']['evidence']
+
+
 def test_malformed_request_is_rejected() -> None:
     response = client.post("/analyse/comparative", json={"wrong_field": "value"})
     assert response.status_code == 422

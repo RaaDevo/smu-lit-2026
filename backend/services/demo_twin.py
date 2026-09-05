@@ -24,10 +24,17 @@ def demo_comparative(data):
             assumptions=['Hypothetical Singapore position; scope and commencement require lawyer judgement.'],
             evidence=refs, uncertainty='HIGH', legal_questions=['Which services are covered and when would a change take effect?'],
             status='AI_GENERATED_SCENARIO', approved_by=None, approved_at=None))
-    return ComparativeResult(assessments=[{'jurisdiction': s.jurisdiction,
+    assessments = [{'jurisdiction': s.jurisdiction,
         'classification': 'FOREIGN_DEVELOPMENT' if s.jurisdiction != 'Singapore' else 'FACT',
         'relevance': 'HIGH', 'reasoning': s.relevant_text, 'evidence': [r], 'confidence': 0.85,
-    } for s, r in zip(data.sources, refs)], scenarios=scenarios)
+    } for s, r in zip(data.sources, refs)]
+    return ComparativeResult(assessments=assessments, scenarios=scenarios, recommendation={
+        'scenarioId': 'scenario-1',
+        'rationale': 'The foreign documented-assessment model has high persuasive relevance to the supplied Singapore designated-service framework, while remaining hypothetical Singapore law.',
+        'persuasiveWeight': 'HIGH',
+        'evidence': [item.model_dump() for item in refs],
+        'confidence': 0.82,
+    })
 
 def demo_direct(data):
     canonical = is_canonical(data)

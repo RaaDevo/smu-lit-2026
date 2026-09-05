@@ -47,6 +47,9 @@ def validate_comparative(result, data):
         raise ValueError('Comparative assessment must cover both supplied jurisdictions.')
     if any(s.status != 'AI_GENERATED_SCENARIO' for s in result.scenarios):
         raise ValueError('Model-generated scenarios must remain unapproved.')
+    if result.recommendation.scenario_id not in {scenario.id for scenario in result.scenarios}:
+        raise ValueError('Recommendation must reference a supplied scenario.')
+    check_evidence(result.recommendation, data.sources)
     check_evidence(result, data.sources)
 
 
