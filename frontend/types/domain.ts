@@ -11,6 +11,8 @@ export type LegalSource = {
   relevantText: string;
   date: string;
   textKind: "EXCERPT" | "CURATOR_SUMMARY";
+  provenance: "CURATED" | "LIVE_RESEARCH";
+  localFilePath: string | null;
 };
 
 export type EvidenceReference = {

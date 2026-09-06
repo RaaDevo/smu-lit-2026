@@ -26,6 +26,7 @@ import { Evidence } from "./Evidence";
 import { Badge, ImpactMap } from "./ImpactMap";
 import { PatchCard } from "./PatchCard";
 import { Brief } from "./Brief";
+import { humanizeStatus } from "@/lib/presentation";
 
 type View = "evidence" | "scenario" | "impact" | "review" | "brief";
 
@@ -76,7 +77,7 @@ function LawyerAssumptionStage({
           <article key={index} className="assumption-assessment">
             <h3 className="font-semibold">{assessment.jurisdiction}</h3>
             <p className="metadata mt-2">
-              {assessment.classification} · {assessment.relevance} relevance
+              {humanizeStatus(assessment.classification)} · {humanizeStatus(assessment.relevance)} relevance
             </p>
             <p className="mt-3 text-sm leading-6">{assessment.reasoning}</p>
             <p className="metadata mt-3">
@@ -459,7 +460,7 @@ function Workspace({
 
   return (
     <>
-      <div className="mb-6 flex items-end justify-between print:hidden">
+      <div className="workspace-toolbar mb-6 flex items-end justify-between print:hidden">
         <div>
           <h2 className="workspace-heading">
             Online safety · Proactive stress test
@@ -604,7 +605,7 @@ function Workspace({
               Lawyer approved by {project.scenario.approvedBy} · {formatTimestamp(project.scenario.approvedAt)}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="assumption-actions flex shrink-0 flex-col items-end gap-2">
             <Badge status={project.scenario.status} />
             <button className="button-secondary" onClick={() => setView("scenario")}>
               Return to assumption
@@ -614,7 +615,7 @@ function Workspace({
       )}
 
       {view === "evidence" && (
-        <section className="grid grid-cols-[1fr_400px] gap-6">
+        <section className="evidence-layout">
           <div className="panel pt-0">
             <Badge status={seed.development.status} />
             <h2 className="my-4 font-serif text-3xl font-semibold tracking-[-0.025em]">
@@ -810,11 +811,11 @@ function Workspace({
           {project.twinRun && (
             <details className="brief-appendix mb-5" open>
               <summary className="cursor-pointer font-semibold">Law Firm Twin run · {project.twinRun.evaluator.runComplete ? "complete" : "requires attention"}</summary>
-              <div className="mt-4 grid grid-cols-5 gap-3 text-sm">
+              <div className="twin-run-grid mt-4 text-sm">
                 {project.twinRun.auditRecords.map((record) => (
                   <div key={record.invocationId} className="border-t border-[#c9c9c5] pt-2">
-                    <p className="metadata">{record.executionMode}</p>
-                    <p className="font-semibold">{record.agent.replaceAll("_", " ")}</p>
+                    <p className="metadata">{humanizeStatus(record.executionMode)}</p>
+                    <p className="font-semibold">{humanizeStatus(record.agent)}</p>
                     <p className="mt-1 text-xs text-[#686868]">Attempt {record.attempt} · {record.profileVersion}</p>
                   </div>
                 ))}
@@ -822,7 +823,7 @@ function Workspace({
               <p className="mt-4 text-sm leading-6">{project.twinRun.evaluator.summary}</p>
               <details className="mt-4 border-t border-[#c9c9c5] pt-3">
                 <summary className="cursor-pointer text-sm font-semibold">Twin Calibration Profile</summary>
-                <div className="mt-3 grid grid-cols-5 gap-3 text-xs leading-5">
+                <div className="twin-profile-grid mt-3 text-xs leading-5">
                   {project.twinRun.profiles.map((profile) => (
                     <div key={profile.id}>
                       <p className="font-semibold">{profile.label} · {profile.version}</p>
@@ -837,8 +838,8 @@ function Workspace({
                 <div className="mt-3 space-y-3">
                   {project.twinRun.auditRecords.map((record) => (
                     <details key={`${record.invocationId}-payload`} className="border-b border-[#c9c9c5] pb-3">
-                      <summary className="cursor-pointer text-xs font-semibold">{record.agent.replaceAll("_", " ")} · received and produced record</summary>
-                      <pre className="mt-2 overflow-auto bg-[#f8f8f6] p-3 text-xs">{JSON.stringify({ received: record.received, produced: record.produced }, null, 2)}</pre>
+                      <summary className="text-xs font-semibold">{humanizeStatus(record.agent)} · received and produced record</summary>
+                      <pre className="mt-2 max-w-full overflow-auto whitespace-pre-wrap bg-[#f8f8f6] p-3 text-xs [overflow-wrap:anywhere]">{JSON.stringify({ received: record.received, produced: record.produced }, null, 2)}</pre>
                     </details>
                   ))}
                 </div>
@@ -860,7 +861,7 @@ function Workspace({
             semantic status and inherited dependency impact are shown
             separately.
           </p>
-          <div className="grid grid-cols-[850px_1fr] gap-5">
+          <div className="impact-layout">
             <div className="panel border-t-2 border-[#181818] px-4 pt-4">
               <ImpactMap
                 seed={seed}
@@ -874,8 +875,8 @@ function Workspace({
                 <h3 className="mb-3 text-lg font-semibold tracking-[-0.015em]">{selected.title}</h3>
                 <Badge status={selectedFinding.status} />
                 <p className="my-2 text-xs">
-                  Direct: {selectedFinding.directStatus.replaceAll("_", " ")} ·{" "}
-                  {selectedFinding.severity} severity
+                  Direct: {humanizeStatus(selectedFinding.directStatus)} ·{" "}
+                  {humanizeStatus(selectedFinding.severity)} severity
                 </p>
                 <p className="metadata">
                   Model confidence:{" "}
@@ -952,7 +953,7 @@ function Workspace({
             ))}
           </div>
           {queue && activePatch && (
-            <div className="grid grid-cols-[280px_1fr] gap-5">
+            <div className="review-layout">
               <aside className="panel panel-rail h-fit pt-0">
                 <div className="border-b border-[#181818] pb-4">
                   <p className="metadata">
@@ -1007,7 +1008,7 @@ function Workspace({
               />
             </div>
           )}
-          <div className="mt-6 flex items-center justify-between gap-4 border-t-2 border-[#181818] pt-5">
+          <div className="review-footer mt-6 flex items-center justify-between gap-4 border-t-2 border-[#181818] pt-5">
             <p className="text-sm text-[#686868]">
               Pending, rejected and escalated proposals remain visible as unresolved actions in the brief.
             </p>

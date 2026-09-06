@@ -1,4 +1,5 @@
 import type { ImpactResult, SeedPack } from "@/types/domain";
+import { humanizeStatus } from "@/lib/presentation";
 
 export const statusStyles: Record<string, string> = {
   UPDATE_REQUIRED: "border-red-700 bg-red-50 text-red-950",
@@ -15,9 +16,9 @@ export const statusStyles: Record<string, string> = {
 export function Badge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-block border px-2 py-1 text-[11px] font-bold tracking-[0.06em] ${statusStyles[status] ?? "border-[#777] bg-[#f1f1f1] text-[#181818]"}`}
+      className={`inline-block max-w-full border px-2 py-1 text-center text-[11px] font-bold leading-tight tracking-[0.04em] [overflow-wrap:anywhere] ${statusStyles[status] ?? "border-[#777] bg-[#f1f1f1] text-[#181818]"}`}
     >
-      {status.replaceAll("_", " ")}
+      {humanizeStatus(status)}
     </span>
   );
 }
@@ -46,10 +47,8 @@ export function ImpactMap({
         Approved assumption → direct semantic findings → downstream review
         requirements
       </p>
-      <div
-        className="relative h-[345px] w-[820px]"
-        aria-label="Directed asset dependencies"
-      >
+      <div className="impact-map-scroll" role="region" aria-label="Asset dependency diagram" tabIndex={0}>
+      <div className="relative h-[345px] w-[820px]" aria-label="Directed asset dependencies">
         <svg
           className="absolute inset-0"
           width="820"
@@ -104,13 +103,14 @@ export function ImpactMap({
               className={`absolute min-h-[115px] w-[240px] border-2 p-4 text-left ${statusStyles[finding.status]} ${selected === asset.id ? "ring-2 ring-[#06054d] ring-offset-2 ring-offset-[#f1f1f1]" : ""}`}
             >
               <span className="block text-xs font-semibold">
-                {finding.status.replaceAll("_", " ")}
+                {humanizeStatus(finding.status)}
               </span>
               <span className="my-1 block font-semibold">{asset.title}</span>
               <span className="text-xs">{finding.section}</span>
             </button>
           );
         })}
+      </div>
       </div>
       <div className="mt-4 border-t border-[#c9c9c5] pt-3 text-sm">
         {seed.dependencies.map((edge) => (

@@ -16,17 +16,19 @@ try {
   await expect(page.getByText("Demo Mode", { exact: true })).toBeVisible();
   await page.getByText("Ofcom · uk-ofcom-2025", { exact: true }).click();
   await expect(
-    page.getByText("United Kingdom · FOREIGN DEVELOPMENT · 2025-03-03", { exact: true }),
+    page.getByText("United Kingdom · Foreign development · 2025-03-03", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText(/providers in scope must assess illegal-content risks/),
   ).toBeVisible();
+  await page.screenshot({ path: "../.qa/evidence.png", fullPage: true });
   await page
     .getByRole("button", { name: "Analyse evidence & generate scenarios" })
     .click();
   await page
     .getByRole("button", { name: /Designated-service assessment duty/ })
     .click();
+  await page.screenshot({ path: "../.qa/scenario.png", fullPage: true });
   await expect(
     page.getByRole("button", { name: "Run Firm and Law Firm Twins", exact: true }),
   ).toBeDisabled();
@@ -37,9 +39,9 @@ try {
     .getByRole("button", { name: "Run Firm and Law Firm Twins", exact: true })
     .click();
   await page
-    .getByRole("button", { name: /DOWNSTREAM UPDATE.*Associate Training/ })
+    .getByRole("button", { name: /Downstream update.*Associate Training/ })
     .click();
-  await expect(page.getByText(/Direct: UNAFFECTED/)).toBeVisible();
+  await expect(page.getByText(/Direct: Unaffected/)).toBeVisible();
   await expect(
     page.getByText("Upstream path: playbook → checklist → training"),
   ).toBeVisible();
@@ -49,10 +51,24 @@ try {
     ),
     true,
   );
+  await page.setViewportSize({ width: 1024, height: 768 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+    "Firm Impact must not create page-level horizontal overflow at laptop width",
+  );
+  await expect(
+    page.getByRole("navigation", { name: "Stress-test stages" }),
+  ).toBeVisible();
+  await page.screenshot({ path: "../.qa/impact-laptop.png", fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: "../.qa/impact.png", fullPage: true });
   await page
     .getByRole("button", { name: "Propose remediation & review" })
     .click();
+  await page.screenshot({ path: "../.qa/review.png", fullPage: true });
   const playbook = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: /playbook/ }) });
@@ -75,7 +91,7 @@ try {
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: /advisory/ }) });
   await advisory.getByRole("button", { name: "Escalate", exact: true }).click();
-  await expect(advisory.getByText("ESCALATED", { exact: true })).toBeVisible();
+  await expect(advisory.getByText("Escalated", { exact: true })).toBeVisible();
   await page
     .getByRole("button", { name: "Generate Regulatory Resilience Brief" })
     .click();
@@ -100,7 +116,9 @@ try {
   await page
     .getByText("Law Firm Twins audit and client-alert draft", { exact: true })
     .click();
-  await expect(page.getByText("Formal Sign-Off: COMPLETE", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Formal Sign-Off", { exact: true }).locator("..").getByText("Complete", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Evaluator stage matrix", exact: true }),
   ).toBeVisible();
@@ -134,7 +152,7 @@ try {
     );
   }
   assert.equal(brief.decisions.length, 2);
-  assert.equal(brief.sources.length, 2);
+  assert.equal(brief.sources.length, 7);
   assert.equal(brief.scenario.status, "LAWYER_APPROVED_WORKING_ASSUMPTION");
   assert.equal(brief.twinRun.signOffAttempts.at(-1).formalSignOff, "COMPLETE");
   assert.equal(brief.twinRun.clientAlert.status, "DRAFT_READY");

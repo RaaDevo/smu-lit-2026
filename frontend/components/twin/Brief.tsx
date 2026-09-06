@@ -1,4 +1,5 @@
 import type { ResilienceBrief } from "@/types/domain";
+import { humanizeStatus } from "@/lib/presentation";
 import { Badge } from "./ImpactMap";
 import { Evidence } from "./Evidence";
 
@@ -24,9 +25,6 @@ function parseRequiredAction(action: string) {
   );
   if (!match) {
     return {
-      owner: "Owner not specified",
-      affected: "Affected artefact not specified",
-      status: "Review Required",
       action,
     };
   }
@@ -43,6 +41,8 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
     brief.counts.UPDATE_REQUIRED + brief.counts.DOWNSTREAM_UPDATE;
   const reviewCount = brief.counts.REVIEW_REQUIRED;
   const unaffectedCount = brief.counts.UNAFFECTED;
+  const matrixDimensions = ["TIMING", "PROCEDURAL_COMPLIANCE", "SUBSTANTIVE_CORRECTNESS"] as const;
+  const matrixStages = [...new Set(brief.twinRun?.evaluator.stageMatrix.map((entry) => entry.stage) ?? [])];
 
   function download() {
     const url = URL.createObjectURL(
@@ -56,7 +56,7 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
   }
   return (
     <section className="brief space-y-7">
-      <div className="flex items-end justify-between border-b-2 border-[#181818] pb-5">
+      <div className="brief-header flex items-end justify-between border-b-2 border-[#181818] pb-5">
         <div>
           <p className="app-kicker">Decision record</p>
           <h2 className="app-title">
@@ -64,7 +64,7 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           </h2>
           <p className="metadata mt-3">Generated {new Date(brief.generatedAt).toLocaleString()}</p>
         </div>
-        <div className="flex gap-2 print:hidden">
+        <div className="brief-actions flex gap-2 print:hidden">
           <button className="button-secondary" onClick={download}>
             Export JSON
           </button>
@@ -79,11 +79,8 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
             Executive outcome
           </p>
         </div>
-        <h3 className="executive-headline legacy-headline mt-3 font-serif font-semibold tracking-[-0.025em]">
-          {brief.findings.length} artefacts assessed · {changeCount} require action · {reviewCount} require legal review
-        </h3>
         <h3 className="executive-headline mt-3 font-serif font-semibold tracking-[-0.025em]">
-          {brief.findings.length} Artefacts Assessed · {changeCount} Require Action · {reviewCount} Requires Legal Review
+          {brief.findings.length} artefacts assessed · {changeCount} require action · {reviewCount} {reviewCount === 1 ? "requires" : "require"} legal review
         </h3>
         <p className="executive-description mx-auto mt-4 text-sm leading-6 text-[#e7e7ee]">
           {changeCount} change{changeCount === 1 ? "" : "s"} must be addressed, {reviewCount} item{reviewCount === 1 ? "" : "s"} remain subject to legal applicability review, and {unaffectedCount} artefact{unaffectedCount === 1 ? " remains" : "s remain"} unaffected under this approved hypothetical.
@@ -94,23 +91,16 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
             {brief.requiredActions.map((action, index) => {
               const parsed = parseRequiredAction(action);
               return (
-                <li key={index} className="executive-action-row">
-                  <div className="executive-action-meta">
-                    <span>
-                      <strong>Owner</strong>
-                      {parsed.owner}
-                    </span>
-                    <span>
-                      <strong>Affected Artefact</strong>
-                      {parsed.affected}
-                    </span>
-                    <span>
-                      <strong>Status</strong>
-                      <span className="executive-status">{parsed.status}</span>
-                    </span>
-                  </div>
+                <li key={index} className={`executive-action-row ${parsed.owner ? "" : "executive-action-row-compact"}`}>
+                  {parsed.owner && (
+                    <div className="executive-action-meta">
+                      <span><strong>Owner</strong>{parsed.owner}</span>
+                      <span><strong>Affected artefact</strong>{parsed.affected}</span>
+                      <span><strong>Status</strong><span className="executive-status">{parsed.status}</span></span>
+                    </div>
+                  )}
                   <p className="executive-action-copy">
-                    <strong>Required Action</strong>
+                    <strong>{parsed.owner ? "Required action" : "Governance action"}</strong>
                     {parsed.action}
                   </p>
                 </li>
@@ -153,7 +143,7 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           <h3 className="mb-2 mt-6 font-semibold">Remediation decisions</h3>
           {brief.patches.map((p) => (
             <div key={p.id} className="mb-4 border-b pb-3">
-              <p>{p.assetId} · {p.section} · {p.status}</p>
+              <p>{formatAffectedArtefact(p.assetId, p.section)} · {humanizeStatus(p.status)}</p>
               <dl className="mt-2 space-y-2 text-sm">
                 <dt className="font-semibold">Original</dt><dd>{p.originalText}</dd>
                 <dt className="font-semibold">AI proposal</dt><dd>{p.proposedText}</dd>
@@ -172,7 +162,7 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           <h3 className="mb-3 mt-6 font-semibold">Comparative basis</h3>
           {brief.comparative.assessments.map((a, i) => (
             <div key={i} className="mb-3">
-              <p className="font-medium">{a.jurisdiction} · {a.classification}</p>
+              <p className="font-medium">{a.jurisdiction} · {humanizeStatus(a.classification)}</p>
               <p className="my-2 text-sm">{a.reasoning}</p>
               <Evidence references={a.evidence} sources={brief.sources} />
             </div>
@@ -187,15 +177,16 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
         <div className="mt-5">
           <h3 className="mb-2 font-semibold">Review audit trail</h3>
           {brief.decisions.length === 0 && <p className="text-sm">No lawyer remediation decisions recorded.</p>}
-          {brief.decisions.map((d) => <p key={d.id} className="mb-2 text-sm">{d.patchId} · {d.decision} · {d.reviewerUid} · {d.timestamp}<br />{d.note || "No note recorded."}</p>)}
+          {brief.decisions.map((d) => <p key={d.id} className="mb-2 text-sm [overflow-wrap:anywhere]">{d.patchId} · {humanizeStatus(d.decision)} · {d.reviewerUid} · {new Date(d.timestamp).toLocaleString()}<br />{d.note || "No note recorded."}</p>)}
           <h3 className="mb-2 mt-6 font-semibold">Source register</h3>
           <p className="mb-3 text-sm">Dated curated evidence, not a complete statement of current law. Curator summaries are not statutory quotations.</p>
           {brief.sources.map((s) => (
             <article key={s.id} className="mb-4 border-b pb-3 text-sm">
-              <h4 className="font-semibold">{s.id} · {s.title}</h4>
-              <p className="my-2">{s.authority} · {s.jurisdiction} · {s.date} · {s.legalStatus} · {s.textKind}</p>
-              <p className="whitespace-pre-wrap">{s.relevantText}</p>
-              <a className="mt-2 block break-all underline" href={s.url} target="_blank" rel="noreferrer">{s.url}</a>
+              <h4 className="font-semibold [overflow-wrap:anywhere]">{s.title}</h4>
+              <p className="metadata my-2 [overflow-wrap:anywhere]">{s.authority} · {s.jurisdiction} · {s.date}</p>
+              <p className="mb-2 text-xs font-semibold">Provenance: {humanizeStatus(s.provenance)} · {humanizeStatus(s.legalStatus)} · {humanizeStatus(s.textKind)}</p>
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{s.relevantText}</p>
+              <a className="mt-2 block underline [overflow-wrap:anywhere]" href={s.url} target="_blank" rel="noreferrer">Open source publication · {s.id}</a>
             </article>
           ))}
         </div>
@@ -205,18 +196,34 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           <summary className="cursor-pointer font-semibold">Law Firm Twins audit and client-alert draft</summary>
           <div className="mt-5 space-y-4 text-sm">
             <p>{brief.twinRun.evaluator.summary}</p>
-            <p><strong>Client Alert Twin:</strong> {brief.twinRun.clientAlert.status} — {brief.twinRun.clientAlert.draft}</p>
-            <p><strong>Formal Sign-Off:</strong> {brief.twinRun.signOffAttempts.at(-1)?.formalSignOff}</p>
+            <div className="twin-outcome-grid">
+              <p><strong>Client Alert Twin</strong><span>{humanizeStatus(brief.twinRun.clientAlert.status)}</span>{brief.twinRun.clientAlert.draft}</p>
+              <p><strong>Formal Sign-Off</strong><span>{humanizeStatus(brief.twinRun.signOffAttempts.at(-1)?.formalSignOff ?? "NOT_RECORDED")}</span>Human publication remains required.</p>
+            </div>
             {brief.twinRun.signOffAttempts.at(-1)?.proceduralDeviations.map((deviation, index) => (
               <p key={index} className="notice notice-warning">Procedural deviation: {deviation.description} Governance risk: {deviation.governanceRisk}</p>
             ))}
             <h3 className="mt-5 font-semibold">Evaluator stage matrix</h3>
-            {brief.twinRun.evaluator.stageMatrix.map((entry, index) => (
-              <p key={index} className="text-[#686868]">{entry.stage} · {entry.dimension.replaceAll("_", " ")} · {entry.status}: {entry.assessment}</p>
-            ))}
+            <p className="mt-1 text-[#686868]">Each Twin is checked across timing, procedure, and substantive correctness.</p>
+            <div className="matrix-scroll" role="region" aria-label="Evaluator stage matrix" tabIndex={0}>
+              <table className="evaluator-matrix">
+                <thead><tr><th scope="col">Twin</th>{matrixDimensions.map((dimension) => <th scope="col" key={dimension}>{humanizeStatus(dimension)}</th>)}</tr></thead>
+                <tbody>
+                  {matrixStages.map((stage) => (
+                    <tr key={stage}>
+                      <th scope="row">{humanizeStatus(stage)}</th>
+                      {matrixDimensions.map((dimension) => {
+                        const entry = brief.twinRun!.evaluator.stageMatrix.find((item) => item.stage === stage && item.dimension === dimension);
+                        return <td key={dimension}>{entry && <><Badge status={entry.status} /><p>{entry.assessment}</p></>}</td>;
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {brief.twinRun.evaluator.observations.map((observation) => (
               <div key={observation.id} className="border-b border-[#c9c9c5] pb-3">
-                <p className="font-semibold">{observation.category.replaceAll("_", " ")} · {observation.severity}</p>
+                <p className="font-semibold">{humanizeStatus(observation.category)} · {humanizeStatus(observation.severity)}</p>
                 <p className="mt-1">{observation.issue}</p>
                 <p className="mt-1 text-[#686868]">{observation.recommendation}</p>
               </div>

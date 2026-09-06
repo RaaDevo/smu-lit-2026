@@ -7,6 +7,7 @@ import type {
 } from "@/types/domain";
 import { Evidence } from "./Evidence";
 import { Badge } from "./ImpactMap";
+import { humanizeStatus } from "@/lib/presentation";
 
 export function PatchCard({
   patch,
@@ -34,13 +35,13 @@ export function PatchCard({
   );
   return (
     <article className="panel border-t-2 border-[#181818] pt-0">
-      <div className="mb-5 flex items-center justify-between border-b border-[#c9c9c5] py-4">
+      <div className="patch-heading mb-5 flex items-center justify-between border-b border-[#c9c9c5] py-4">
         <h3 className="text-lg font-semibold tracking-[-0.015em]">
           {patch.assetId} · {patch.section}
         </h3>
         <Badge status={latest?.decision ?? patch.status} />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="patch-comparison-grid">
         <div>
           <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[#686868]">
             Original — preserved
@@ -115,8 +116,8 @@ export function PatchCard({
         <details className="mt-4 border-t border-[#c9c9c5] pt-3 text-xs text-[#686868]">
           <summary>Review history ({history.length})</summary>
           {history.map((d) => (
-            <p key={d.id} className="my-2">
-              {d.decision} · {d.reviewerUid} · {d.timestamp}
+            <p key={d.id} className="my-2 [overflow-wrap:anywhere]">
+              {humanizeStatus(d.decision)} · {d.reviewerUid} · {new Date(d.timestamp).toLocaleString()}
               <br />
               {d.note || "No note recorded."}
             </p>
