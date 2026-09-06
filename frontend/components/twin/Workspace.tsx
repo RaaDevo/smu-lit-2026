@@ -80,7 +80,7 @@ function LawyerAssumptionStage({
             </p>
             <p className="mt-3 text-sm leading-6">{assessment.reasoning}</p>
             <p className="metadata mt-3">
-              Confidence {Math.round(assessment.confidence * 100)}%
+              Confidence {assessment.confidence}
             </p>
             <Evidence references={assessment.evidence} sources={seed.sources} />
           </article>
@@ -111,7 +111,7 @@ function LawyerAssumptionStage({
             </div>
             <p className="mt-3 text-sm leading-6">{recommendation.rationale}</p>
             <div className="recommendation-meta">
-              <span>Confidence {Math.round(recommendation.confidence * 100)}%</span>
+              <span>Confidence {recommendation.confidence}</span>
               <span>{recommendation.persuasiveWeight} persuasive weight</span>
             </div>
             <button
@@ -631,7 +631,12 @@ function Workspace({
               sources={seed.sources}
               references={seed.sources.map((s) => ({
                 sourceId: s.id,
+                jurisdiction: s.jurisdiction,
+                sourceType: s.sourceType,
+                authority: s.authority,
+                legalStatus: s.legalStatus,
                 relevantText: s.relevantText,
+                comparativeRelevance: "NOT_APPLICABLE",
                 explanation: "Curated material supplied to the model.",
               }))}
             />

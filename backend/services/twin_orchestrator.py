@@ -75,10 +75,11 @@ def _practice(data: StressInput, triage: TriageAgentOutput, reconsideration=None
 def _signoff(practice: PracticeGroupAgentOutput) -> SignOffAgentOutput:
     return SignOffAgentOutput(decision='APPROVED', approved_finding_ids=[item.id for item in practice.findings],
         reconsideration=None, unresolved_risks=['Scope and commencement remain subject to lawyer review.'],
-        handoff_summary='Findings are conditionally suitable for internal client-alert drafting and remediation review.')
+        handoff_summary='Findings are conditionally suitable for internal client-alert drafting and remediation review.',
+        formal_sign_off='COMPLETE', procedural_deviations=[])
 
 def _client_alert(signoff: SignOffAgentOutput, practice: PracticeGroupAgentOutput) -> ClientAlertAgentOutput:
-    ready = signoff.decision == 'APPROVED'
+    ready = signoff.decision == 'APPROVED' and signoff.formal_sign_off == 'COMPLETE'
     return ClientAlertAgentOutput(status='DRAFT_READY' if ready else 'HOLD_FOR_SIGN_OFF',
         headline='Conditional online-safety onboarding review', audience='Internal client-alert review',
         draft=('If the lawyer-approved working assumption applies, designated-service clients may require documented illegal-content risk assessments and retention checks. This is a draft for lawyer review, not publication.' if ready else 'Hold: Sign-off has not approved the findings.'),
@@ -133,9 +134,19 @@ def _evaluator(data: StressInput, impact, audit: list[AgentAuditRecord]) -> Eval
         })
     ownership_summary = ('Ownership coverage is incomplete for: ' + ', '.join(missing_owners)
                          if missing_owners else 'Ownership coverage was reviewed; every supplied artefact has a recorded owner.')
+    matrix = []
+    for stage in ('TRIAGE', 'PRACTICE_GROUP', 'SIGN_OFF', 'CLIENT_ALERT', 'EVALUATOR'):
+        for dimension, assessment in (
+            ('TIMING', 'Timing is only as reliable as the structured demo calibration.'),
+            ('PROCEDURAL_COMPLIANCE', 'Formal Sign-Off remains the sole release gate; deviations are governance risks.'),
+            ('SUBSTANTIVE_CORRECTNESS', 'Substantive conclusions remain conditional on the lawyer-approved working assumption.'),
+        ):
+            matrix.append({'stage': stage, 'dimension': dimension, 'assessment': assessment,
+                'status': 'NO_MATERIAL_GAP', 'evidence': [item.model_dump() for item in refs]})
     return EvaluatorAgentOutput(observations=observations, run_complete=len(audit) >= 4,
         summary='Evaluator reviewed the handoffs, stale artefacts, conflicts, downstream dependency effects, '
-                + ownership_summary + ' Remediation and lawyer-review requirements remain conditional on the approved scenario.')
+                + ownership_summary + ' Remediation and lawyer-review requirements remain conditional on the approved scenario.',
+        stage_matrix=matrix)
 
 async def run_twins(data: StressInput) -> TwinRunResult:
     run_hash = context_hash(data)

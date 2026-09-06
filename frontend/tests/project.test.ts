@@ -57,7 +57,8 @@ test("approval requires a selected nonempty scenario", () => {
 
 test("comparative analysis preselects the AI recommendation", () => {
   const comparative = { assessments: [], scenarios: [scenario], recommendation: {
-    scenarioId: "one", rationale: "Supported", persuasiveWeight: "HIGH", evidence: [], confidence: 0.8,
+    scenarioId: "one", rationale: "Supported", persuasiveWeight: "HIGH", evidence: [], confidence: "MEDIUM",
+    factorsConsidered: ["Supplied evidence"], supportingEvidence: [], countervailingConsiderations: ["Uncertainty"], uncertainty: "Uncertain", recommendationRationale: "Stress-test first.",
   }} as ComparativeResult;
   assert.equal(applyComparativeResult(initialProject(), comparative).scenario?.id, "one");
 });
@@ -71,7 +72,8 @@ test("legacy comparative state without a recommendation remains selectable witho
 
 test("lawyer-authored assumption clears agent and review state", () => {
   const comparative = { assessments: [], scenarios: [scenario], recommendation: {
-    scenarioId: "one", rationale: "Supported", persuasiveWeight: "HIGH", evidence: [], confidence: 0.8,
+    scenarioId: "one", rationale: "Supported", persuasiveWeight: "HIGH", evidence: [], confidence: "MEDIUM",
+    factorsConsidered: ["Supplied evidence"], supportingEvidence: [], countervailingConsiderations: ["Uncertainty"], uncertainty: "Uncertain", recommendationRationale: "Stress-test first.",
   }} as ComparativeResult;
   const project = { ...applyComparativeResult(initialProject(), comparative), twinRun: {} as never,
     impact: {} as never, remediation: {} as never, decisions: [{}] as never, brief: {} as never };

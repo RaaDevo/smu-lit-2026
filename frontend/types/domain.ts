@@ -4,9 +4,9 @@ export type LegalSource = {
   id: string;
   title: string;
   authority: string;
-  jurisdiction: "Singapore" | "United Kingdom";
+  jurisdiction: string;
   sourceType: "LEGISLATION" | "REGULATION" | "REGULATORY_GUIDANCE" | "GOVERNMENT_PUBLICATION" | "CONSULTATION" | "COURT_DECISION";
-  legalStatus: "CURRENT_LAW" | "FOREIGN_DEVELOPMENT" | "PROPOSED_LAW" | "GUIDANCE";
+  legalStatus: "CURRENT_LAW" | "FOREIGN_DEVELOPMENT" | "PROPOSED_LAW" | "GUIDANCE" | "CURRENT_VERIFIED_SINGAPORE_LAW" | "SINGAPORE_PRIMARY_AUTHORITY" | "SINGAPORE_SECONDARY_MATERIAL" | "FOREIGN_COMMON_LAW_AUTHORITY" | "FOREIGN_LEGISLATION" | "FOREIGN_REGULATORY_DEVELOPMENT" | "COMPARATIVE_MATERIAL" | "INFERENCE" | "HYPOTHETICAL_SCENARIO" | "LAWYER_APPROVED_WORKING_ASSUMPTION" | "AI_RECOMMENDATION";
   url: string;
   relevantText: string;
   date: string;
@@ -15,35 +15,45 @@ export type LegalSource = {
 
 export type EvidenceReference = {
   sourceId: string;
+  jurisdiction: string;
+  sourceType: string;
+  authority: string;
+  legalStatus: string;
   relevantText: string;
+  comparativeRelevance: "HIGH" | "MEDIUM" | "LOW" | "UNCERTAIN" | "NOT_APPLICABLE";
   explanation: string;
 };
 
 export type RegulatoryDevelopment = {
   id: string;
   title: string;
-  jurisdiction: "United Kingdom";
-  status: "FOREIGN_DEVELOPMENT";
+  jurisdiction: string;
+  status: "FOREIGN_DEVELOPMENT" | "FOREIGN_COMMON_LAW_AUTHORITY" | "FOREIGN_LEGISLATION" | "FOREIGN_REGULATORY_DEVELOPMENT";
   date: string;
   summary: string;
   sourceIds: Array<string>;
 };
 
 export type ComparativeAssessment = {
-  jurisdiction: "Singapore" | "United Kingdom";
-  classification: "FACT" | "FOREIGN_DEVELOPMENT" | "INFERENCE";
-  relevance: "LOW" | "MEDIUM" | "HIGH";
+  jurisdiction: string;
+  classification: "FACT" | "FOREIGN_DEVELOPMENT" | "INFERENCE" | "CURRENT_VERIFIED_SINGAPORE_LAW" | "SINGAPORE_PRIMARY_AUTHORITY" | "SINGAPORE_SECONDARY_MATERIAL" | "FOREIGN_COMMON_LAW_AUTHORITY" | "FOREIGN_LEGISLATION" | "FOREIGN_REGULATORY_DEVELOPMENT" | "COMPARATIVE_MATERIAL" | "PROPOSED_LAW" | "HYPOTHETICAL_SCENARIO" | "LAWYER_APPROVED_WORKING_ASSUMPTION" | "AI_RECOMMENDATION";
+  relevance: "HIGH" | "MEDIUM" | "LOW" | "UNCERTAIN" | "NOT_APPLICABLE";
   reasoning: string;
   evidence: Array<EvidenceReference>;
-  confidence: number;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
 };
 
 export type ScenarioRecommendation = {
   scenarioId: string;
   rationale: string;
-  persuasiveWeight: "LOW" | "MEDIUM" | "HIGH";
+  persuasiveWeight: "HIGH" | "MEDIUM" | "LOW" | "UNCERTAIN" | "NOT_APPLICABLE";
   evidence: Array<EvidenceReference>;
-  confidence: number;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  factorsConsidered: Array<string>;
+  supportingEvidence: Array<EvidenceReference>;
+  countervailingConsiderations: Array<string>;
+  uncertainty: string | null;
+  recommendationRationale: string;
 };
 
 export type Scenario = {
@@ -266,6 +276,7 @@ export type TwinCalibrationProfile = {
   competenceBoundaries: Array<string>;
   handoffRules: Array<string>;
   operationalContext: TriageOperationalCalibration | null;
+  fabricatedDataDisclaimer: string;
 };
 
 export type TriageItem = {
@@ -334,6 +345,13 @@ export type SignOffAgentOutput = {
   reconsideration: ReconsiderationRequest | null;
   unresolvedRisks: Array<string>;
   handoffSummary: string;
+  formalSignOff: "COMPLETE" | "NOT_COMPLETE";
+  proceduralDeviations: Array<ProceduralDeviation>;
+};
+
+export type ProceduralDeviation = {
+  description: string;
+  governanceRisk: string;
 };
 
 export type SignOffAgentInput = {
@@ -376,6 +394,15 @@ export type EvaluatorAgentOutput = {
   observations: Array<EvaluatorObservation>;
   runComplete: boolean;
   summary: string;
+  stageMatrix: Array<StageMatrixEntry>;
+};
+
+export type StageMatrixEntry = {
+  stage: "TRIAGE" | "PRACTICE_GROUP" | "SIGN_OFF" | "CLIENT_ALERT" | "EVALUATOR";
+  dimension: "TIMING" | "PROCEDURAL_COMPLIANCE" | "SUBSTANTIVE_CORRECTNESS";
+  assessment: string;
+  status: "NO_MATERIAL_GAP" | "MATERIAL_GAP" | "INSUFFICIENT_EVIDENCE" | "REQUIRES_LAWYER_JUDGEMENT";
+  evidence: Array<EvidenceReference>;
 };
 
 export type AgentAuditRecord = {

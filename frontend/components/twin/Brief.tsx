@@ -206,6 +206,14 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           <div className="mt-5 space-y-4 text-sm">
             <p>{brief.twinRun.evaluator.summary}</p>
             <p><strong>Client Alert Twin:</strong> {brief.twinRun.clientAlert.status} — {brief.twinRun.clientAlert.draft}</p>
+            <p><strong>Formal Sign-Off:</strong> {brief.twinRun.signOffAttempts.at(-1)?.formalSignOff}</p>
+            {brief.twinRun.signOffAttempts.at(-1)?.proceduralDeviations.map((deviation, index) => (
+              <p key={index} className="notice notice-warning">Procedural deviation: {deviation.description} Governance risk: {deviation.governanceRisk}</p>
+            ))}
+            <h3 className="mt-5 font-semibold">Evaluator stage matrix</h3>
+            {brief.twinRun.evaluator.stageMatrix.map((entry, index) => (
+              <p key={index} className="text-[#686868]">{entry.stage} · {entry.dimension.replaceAll("_", " ")} · {entry.status}: {entry.assessment}</p>
+            ))}
             {brief.twinRun.evaluator.observations.map((observation) => (
               <div key={observation.id} className="border-b border-[#c9c9c5] pb-3">
                 <p className="font-semibold">{observation.category.replaceAll("_", " ")} · {observation.severity}</p>

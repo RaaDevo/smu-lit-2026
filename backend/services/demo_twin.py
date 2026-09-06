@@ -11,6 +11,8 @@ def load_seed() -> SeedPack:
 
 def evidence(sources):
     return [EvidenceReference(source_id=s.id, relevant_text=s.relevant_text,
+        jurisdiction=s.jurisdiction, source_type=s.source_type, authority=s.authority,
+        legal_status=s.legal_status, comparative_relevance='HIGH' if s.jurisdiction != 'Singapore' else 'MEDIUM',
         explanation='Curated comparative context only; the Singapore duty is a hypothetical working assumption.') for s in sources]
 
 def demo_comparative(data):
@@ -26,14 +28,19 @@ def demo_comparative(data):
             status='AI_GENERATED_SCENARIO', approved_by=None, approved_at=None))
     assessments = [{'jurisdiction': s.jurisdiction,
         'classification': 'FOREIGN_DEVELOPMENT' if s.jurisdiction != 'Singapore' else 'FACT',
-        'relevance': 'HIGH', 'reasoning': s.relevant_text, 'evidence': [r], 'confidence': 0.85,
+        'relevance': 'HIGH' if s.jurisdiction != 'Singapore' else 'MEDIUM', 'reasoning': s.relevant_text, 'evidence': [r], 'confidence': 'MEDIUM',
     } for s, r in zip(data.sources, refs)]
     return ComparativeResult(assessments=assessments, scenarios=scenarios, recommendation={
         'scenarioId': 'scenario-1',
         'rationale': 'The foreign documented-assessment model has high persuasive relevance to the supplied Singapore designated-service framework, while remaining hypothetical Singapore law.',
         'persuasiveWeight': 'HIGH',
         'evidence': [item.model_dump() for item in refs],
-        'confidence': 0.82,
+        'confidence': 'MEDIUM',
+        'factorsConsidered': ['Supplied source status', 'Comparative institutional context', 'Singapore designated-service context'],
+        'supportingEvidence': [item.model_dump() for item in refs],
+        'countervailingConsiderations': ['The supplied Singapore material does not establish a matching duty.', 'The foreign development does not change Singapore law.'],
+        'uncertainty': 'Scope, commencement and Singapore treatment require lawyer judgement.',
+        'recommendationRationale': 'This scenario most usefully stress-tests the supplied firm artefacts while preserving uncertainty.',
     })
 
 def demo_direct(data):

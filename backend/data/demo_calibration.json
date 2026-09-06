@@ -1,0 +1,18 @@
+{
+  "disclaimer": "FABRICATED DEMO CALIBRATION ONLY. Harcourt Meridian LLP, its names, incidents, latency figures, and all values below are structured test data, not real-world facts, legal authority, or a basis for legal scoring.",
+  "firm": "Harcourt Meridian LLP (fictional)",
+  "internalSyntheticPersuasiveWeightMatrix": {
+    "visibility": "INTERNAL_DEMO_METADATA_ONLY",
+    "legalAuthority": "NONE",
+    "purpose": "Exercise comparative-analysis calibration only. Never expose or convert these values into user-facing legal scores.",
+    "scale": "1 = negligible; 5 = frequently determinative; synthetic only",
+    "weights": {
+      "Contract": {"United Kingdom": 5, "Australia": 4, "Malaysia": 3, "New Zealand": 2},
+      "Trusts / Equity": {"United Kingdom": 5, "Australia": 4, "Malaysia": 2, "New Zealand": 3},
+      "Company law": {"United Kingdom": 4, "Australia": 4, "Malaysia": 2, "New Zealand": 2},
+      "Tort": {"United Kingdom": 3, "Australia": 3, "Malaysia": 2, "New Zealand": 4},
+      "Banking & Finance": {"United Kingdom": 4, "Australia": 3, "Malaysia": 3, "New Zealand": 2},
+      "IP / Technology": {"United Kingdom": 3, "Australia": 3, "Malaysia": 2, "New Zealand": 2}
+    }
+  }
+}

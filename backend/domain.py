@@ -13,6 +13,8 @@ def nonblank(value: str) -> str:
 Content = Annotated[str, StringConstraints(min_length=1, max_length=30000), AfterValidator(nonblank)]
 Confidence = Annotated[float, Field(ge=0, le=1)]
 Severity = Literal['LOW', 'MEDIUM', 'HIGH']
+QualitativeSignificance = Literal['HIGH', 'MEDIUM', 'LOW', 'UNCERTAIN', 'NOT_APPLICABLE']
+QualitativeConfidence = Literal['HIGH', 'MEDIUM', 'LOW']
 ImpactStatus = Literal['UNAFFECTED', 'MONITOR', 'REVIEW_REQUIRED', 'UPDATE_REQUIRED', 'DOWNSTREAM_UPDATE']
 DirectStatus = Literal['UNAFFECTED', 'MONITOR', 'REVIEW_REQUIRED', 'UPDATE_REQUIRED']
 ScenarioStatus = Literal['AI_GENERATED_SCENARIO', 'LAWYER_APPROVED_WORKING_ASSUMPTION', 'REJECTED']
@@ -27,9 +29,13 @@ class LegalSource(Model):
     id: Text
     title: Text
     authority: Text
-    jurisdiction: Literal['Singapore', 'United Kingdom']
+    jurisdiction: Text
     source_type: Literal['LEGISLATION', 'REGULATION', 'REGULATORY_GUIDANCE', 'GOVERNMENT_PUBLICATION', 'CONSULTATION', 'COURT_DECISION']
-    legal_status: Literal['CURRENT_LAW', 'FOREIGN_DEVELOPMENT', 'PROPOSED_LAW', 'GUIDANCE']
+    legal_status: Literal['CURRENT_LAW', 'FOREIGN_DEVELOPMENT', 'PROPOSED_LAW', 'GUIDANCE',
+        'CURRENT_VERIFIED_SINGAPORE_LAW', 'SINGAPORE_PRIMARY_AUTHORITY', 'SINGAPORE_SECONDARY_MATERIAL',
+        'FOREIGN_COMMON_LAW_AUTHORITY', 'FOREIGN_LEGISLATION', 'FOREIGN_REGULATORY_DEVELOPMENT',
+        'COMPARATIVE_MATERIAL', 'INFERENCE', 'HYPOTHETICAL_SCENARIO',
+        'LAWYER_APPROVED_WORKING_ASSUMPTION', 'AI_RECOMMENDATION']
     url: Annotated[str, StringConstraints(pattern=r'^https://')]
     relevant_text: Text
     date: Text
@@ -37,32 +43,45 @@ class LegalSource(Model):
 
 class EvidenceReference(Model):
     source_id: Text
+    jurisdiction: Text
+    source_type: Text
+    authority: Text
+    legal_status: Text
     relevant_text: Text
+    comparative_relevance: QualitativeSignificance
     explanation: Text
 
 class RegulatoryDevelopment(Model):
     id: Text
     title: Text
-    jurisdiction: Literal['United Kingdom']
-    status: Literal['FOREIGN_DEVELOPMENT']
+    jurisdiction: Text
+    status: Literal['FOREIGN_DEVELOPMENT', 'FOREIGN_COMMON_LAW_AUTHORITY', 'FOREIGN_LEGISLATION', 'FOREIGN_REGULATORY_DEVELOPMENT']
     date: Text
     summary: Text
     source_ids: list[Text] = Field(min_length=1)
 
 class ComparativeAssessment(Model):
-    jurisdiction: Literal['Singapore', 'United Kingdom']
-    classification: Literal['FACT', 'FOREIGN_DEVELOPMENT', 'INFERENCE']
-    relevance: Severity
+    jurisdiction: Text
+    classification: Literal['FACT', 'FOREIGN_DEVELOPMENT', 'INFERENCE', 'CURRENT_VERIFIED_SINGAPORE_LAW',
+        'SINGAPORE_PRIMARY_AUTHORITY', 'SINGAPORE_SECONDARY_MATERIAL', 'FOREIGN_COMMON_LAW_AUTHORITY',
+        'FOREIGN_LEGISLATION', 'FOREIGN_REGULATORY_DEVELOPMENT', 'COMPARATIVE_MATERIAL', 'PROPOSED_LAW',
+        'HYPOTHETICAL_SCENARIO', 'LAWYER_APPROVED_WORKING_ASSUMPTION', 'AI_RECOMMENDATION']
+    relevance: QualitativeSignificance
     reasoning: Text
     evidence: list[EvidenceReference] = Field(min_length=1)
-    confidence: Confidence
+    confidence: QualitativeConfidence
 
 class ScenarioRecommendation(Model):
     scenario_id: Text
     rationale: Text
-    persuasive_weight: Severity
+    persuasive_weight: QualitativeSignificance
     evidence: list[EvidenceReference] = Field(min_length=1)
-    confidence: Confidence
+    confidence: QualitativeConfidence
+    factors_considered: list[Text] = Field(min_length=1)
+    supporting_evidence: list[EvidenceReference] = Field(min_length=1)
+    countervailing_considerations: list[Text] = Field(min_length=1)
+    uncertainty: Text | None
+    recommendation_rationale: Text
 
 class Scenario(Model):
     id: Text
@@ -263,13 +282,12 @@ class TwinCalibrationProfile(Model):
     competence_boundaries: list[Text] = Field(min_length=1)
     handoff_rules: list[Text] = Field(min_length=1)
     operational_context: TriageOperationalCalibration | None = None
+    fabricated_data_disclaimer: Text = 'Structured fictional demo calibration only; not real-world fact or legal authority.'
 
     @model_validator(mode='after')
     def operational_context_matches_agent(self):
-        if self.agent == 'TRIAGE' and self.operational_context is None:
-            raise ValueError('Triage requires operational calibration configuration.')
-        if self.agent != 'TRIAGE' and self.operational_context is not None:
-            raise ValueError('Operational calibration is currently defined only for Triage.')
+        if self.operational_context is None:
+            raise ValueError('Every operational Twin requires structured calibration configuration.')
         return self
 
 class TriageItem(Model):
@@ -323,6 +341,20 @@ class SignOffAgentOutput(Model):
     reconsideration: ReconsiderationRequest | None
     unresolved_risks: list[Text]
     handoff_summary: Text
+    formal_sign_off: Literal['COMPLETE', 'NOT_COMPLETE']
+    procedural_deviations: list['ProceduralDeviation']
+
+    @model_validator(mode='after')
+    def formal_gate(self):
+        if self.decision == 'APPROVED' and self.formal_sign_off != 'COMPLETE':
+            raise ValueError('APPROVED requires complete formal Sign-Off.')
+        if self.decision == 'RETURNED' and self.formal_sign_off != 'NOT_COMPLETE':
+            raise ValueError('RETURNED must retain incomplete formal Sign-Off.')
+        return self
+
+class ProceduralDeviation(Model):
+    description: Text
+    governance_risk: Text
 
 class SignOffAgentInput(Model):
     run_id: Text
@@ -360,6 +392,24 @@ class EvaluatorAgentOutput(Model):
     observations: list[EvaluatorObservation]
     run_complete: bool
     summary: Text
+    stage_matrix: list['StageMatrixEntry'] = Field(min_length=3)
+
+    @model_validator(mode='after')
+    def complete_stage_matrix(self):
+        by_stage: dict[str, set[str]] = {}
+        for entry in self.stage_matrix:
+            by_stage.setdefault(entry.stage, set()).add(entry.dimension)
+        required = {'TIMING', 'PROCEDURAL_COMPLIANCE', 'SUBSTANTIVE_CORRECTNESS'}
+        if any(dimensions != required for dimensions in by_stage.values()):
+            raise ValueError('Evaluator stage matrix must include all three dimensions for every stage.')
+        return self
+
+class StageMatrixEntry(Model):
+    stage: AgentName
+    dimension: Literal['TIMING', 'PROCEDURAL_COMPLIANCE', 'SUBSTANTIVE_CORRECTNESS']
+    assessment: Text
+    status: Literal['NO_MATERIAL_GAP', 'MATERIAL_GAP', 'INSUFFICIENT_EVIDENCE', 'REQUIRES_LAWYER_JUDGEMENT']
+    evidence: list[EvidenceReference]
 
 class AgentAuditRecord(Model):
     invocation_id: Text

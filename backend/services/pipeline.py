@@ -27,6 +27,14 @@ def check_evidence(value, sources):
             source = known.get(raw['source_id'])
             if not source or raw['relevant_text'] not in source.relevant_text:
                 raise ValueError('Evidence must reference a supplied source ID and a passage from its supplied text.')
+            provenance = {
+                'jurisdiction': source.jurisdiction,
+                'source_type': source.source_type,
+                'authority': source.authority,
+                'legal_status': source.legal_status,
+            }
+            if any(raw.get(field) != expected for field, expected in provenance.items()):
+                raise ValueError('Evidence provenance must exactly preserve the supplied source metadata.')
         for child in raw.values():
             check_evidence(child, sources)
     elif isinstance(raw, list):
@@ -36,16 +44,17 @@ def check_evidence(value, sources):
 
 def validate_comparative_input(data):
     unique(data.sources, 'source')
-    if {s.jurisdiction for s in data.sources} != {'Singapore', 'United Kingdom'}:
-        raise ValueError('Supply curated Singapore and United Kingdom sources.')
+    if 'Singapore' not in {s.jurisdiction for s in data.sources}:
+        raise ValueError('Supply at least one curated Singapore source.')
     if not set(data.development.source_ids) <= {s.id for s in data.sources}:
         raise ValueError('Development references an unknown source.')
 
 
 def validate_comparative(result, data):
     unique(result.scenarios, 'scenario')
-    if {a.jurisdiction for a in result.assessments} != {'Singapore', 'United Kingdom'}:
-        raise ValueError('Comparative assessment must cover both supplied jurisdictions.')
+    supplied_jurisdictions = {source.jurisdiction for source in data.sources}
+    if {assessment.jurisdiction for assessment in result.assessments} != supplied_jurisdictions:
+        raise ValueError('Comparative assessment must cover every supplied jurisdiction.')
     if any(s.status != 'AI_GENERATED_SCENARIO' for s in result.scenarios):
         raise ValueError('Model-generated scenarios must remain unapproved.')
     if result.recommendation.scenario_id not in {scenario.id for scenario in result.scenarios}:
@@ -123,6 +132,9 @@ def validate_twin_run(run: TwinRunResult, data):
     triage_record = next((record for record in run.audit_records if record.agent == 'TRIAGE'), None)
     if triage_record is None or TriageAgentOutput.model_validate(triage_record.produced) != run.triage:
         raise ValueError('Twin triage output does not match its audited operational record.')
+    final_signoff = run.sign_off_attempts[-1]
+    if run.client_alert.status == 'DRAFT_READY' and (final_signoff.decision != 'APPROVED' or final_signoff.formal_sign_off != 'COMPLETE'):
+        raise ValueError('Client Alert requires completed formal Sign-Off; procedural deviations cannot open the release gate.')
     direct = DirectResult(findings=run.practice_group_attempts[-1].findings)
     validate_direct(direct, data)
     if run.impact != propagate(direct, data.dependencies, context_hash(data)):
