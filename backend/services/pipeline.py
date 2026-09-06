@@ -145,7 +145,7 @@ def _twin_actions(run: TwinRunResult):
     final_practice = run.practice_group_attempts[-1]
     stale = [finding.asset_id for finding in run.impact.findings
              if finding.status in ('UPDATE_REQUIRED', 'DOWNSTREAM_UPDATE')]
-    downstream = [finding.asset_id for finding in run.impact.findings if finding.downstream_asset_ids]
+    downstream = [finding.asset_id for finding in run.impact.findings if finding.status == 'DOWNSTREAM_UPDATE']
     missing = [asset_id for asset_id in {finding.asset_id for finding in run.impact.findings}
                if not final_practice.ownership.get(asset_id)]
     actions = []
@@ -155,8 +155,9 @@ def _twin_actions(run: TwinRunResult):
         actions.append('Conflicts: ' + '; '.join(conflict.issue for conflict in final_practice.conflicts)
                        + ' Resolve these conflicts before relying on affected artefacts.')
     if downstream:
-        actions.append('Downstream dependencies: ' + ', '.join(downstream)
-                       + ' inherit a dependency effect and must follow upstream remediation sequencing.')
+        inheritance = ' inherits' if len(downstream) == 1 else ' inherit'
+        actions.append('Downstream dependencies: ' + ', '.join(downstream) + inheritance
+                       + ' a dependency effect and must follow upstream remediation sequencing.')
     if missing:
         actions.append('Ownership coverage: assign a responsible owner for ' + ', '.join(missing) + '.')
     else:

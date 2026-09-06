@@ -14,6 +14,13 @@ await mkdir("../.qa", { recursive: true });
 try {
   await page.goto(process.env.SMOKE_URL ?? "http://localhost:3000");
   await expect(page.getByText("Demo Mode", { exact: true })).toBeVisible();
+  await page.getByText("Ofcom · uk-ofcom-2025", { exact: true }).click();
+  await expect(
+    page.getByText("United Kingdom · FOREIGN DEVELOPMENT · 2025-03-03", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/providers in scope must assess illegal-content risks/),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Analyse evidence & generate scenarios" })
     .click();
@@ -21,13 +28,13 @@ try {
     .getByRole("button", { name: /Designated-service assessment duty/ })
     .click();
   await expect(
-    page.getByRole("button", { name: "Stress Test Firm", exact: true }),
+    page.getByRole("button", { name: "Run Firm and Law Firm Twins", exact: true }),
   ).toBeDisabled();
   await page
     .getByRole("button", { name: "Approve working assumption", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Stress Test Firm", exact: true })
+    .getByRole("button", { name: "Run Firm and Law Firm Twins", exact: true })
     .click();
   await page
     .getByRole("button", { name: /DOWNSTREAM UPDATE.*Associate Training/ })
@@ -61,6 +68,9 @@ try {
   await expect(
     playbook.getByRole("paragraph").filter({ hasText: edited }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: /Template Client Advisory/ })
+    .click();
   const advisory = page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: /advisory/ }) });
@@ -78,11 +88,21 @@ try {
   await expect(
     page.getByText("Lawyer-approved working assumption · hypothetical"),
   ).toBeVisible();
+  await page
+    .getByText("Audit trail and source register", { exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Source register", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Review audit trail", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByText("Law Firm Twins audit and client-alert draft", { exact: true })
+    .click();
+  await expect(page.getByText("Formal Sign-Off: COMPLETE", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Evaluator stage matrix", exact: true }),
   ).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
@@ -115,6 +135,30 @@ try {
   }
   assert.equal(brief.decisions.length, 2);
   assert.equal(brief.sources.length, 2);
+  assert.equal(brief.scenario.status, "LAWYER_APPROVED_WORKING_ASSUMPTION");
+  assert.equal(brief.twinRun.signOffAttempts.at(-1).formalSignOff, "COMPLETE");
+  assert.equal(brief.twinRun.clientAlert.status, "DRAFT_READY");
+  assert.equal(brief.twinRun.auditRecords.length, 5);
+  assert.equal(brief.twinRun.evaluator.stageMatrix.length, 15);
+  assert.deepEqual(
+    [...new Set(brief.twinRun.evaluator.stageMatrix.map((entry) => entry.dimension))].sort(),
+    ["PROCEDURAL_COMPLIANCE", "SUBSTANTIVE_CORRECTNESS", "TIMING"],
+  );
+  for (const record of brief.twinRun.auditRecords) {
+    assert.equal(typeof record.inputHash, "string");
+    assert.equal(typeof record.outputHash, "string");
+  }
+  for (const finding of brief.findings) {
+    for (const evidence of finding.evidence) {
+      assert.ok(evidence.sourceId);
+      assert.ok(evidence.jurisdiction);
+      assert.ok(evidence.sourceType);
+      assert.ok(evidence.authority);
+      assert.ok(evidence.legalStatus);
+      assert.ok(evidence.relevantText);
+      assert.ok(evidence.comparativeRelevance);
+    }
+  }
   await page.screenshot({ path: "../.qa/brief.png", fullPage: true });
   await page.emulateMedia({ media: "print" });
   await expect(
@@ -129,6 +173,16 @@ try {
     printBackground: true,
   });
   await page.emulateMedia({ media: "screen" });
+  await page.getByRole("button", { name: "1. Evidence", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Ofcom scrutiny of documented illegal-harms risk assessments", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "2. Lawyer assumption", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Choose one Singapore working assumption", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "3. Firm impact", exact: true }).click();
+  await expect(page.getByText("Law Firm Twin run · complete", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "4. Remediation review", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Adversarial review", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "5. Resilience brief", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Regulatory Resilience Brief", exact: true })).toBeVisible();
   await page
     .getByRole("button", { name: "2. Lawyer assumption", exact: true })
     .click();
@@ -136,13 +190,18 @@ try {
     .getByRole("textbox", { name: "Working assumption", exact: true })
     .fill("IF the scope changes, ask for a new review.");
   await expect(
-    page.getByRole("button", { name: "Stress Test Firm", exact: true }),
+    page.getByRole("button", { name: "Run Firm and Law Firm Twins", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "3. Firm impact", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "5. Resilience brief", exact: true }),
+  ).toBeDisabled();
+  await page.reload();
+  await expect(page.getByText("Demo Mode", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "3. Firm impact", exact: true }),
   ).toBeDisabled();
   assert.deepEqual(errors, []);
   console.log(

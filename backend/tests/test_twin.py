@@ -1,8 +1,13 @@
 from copy import deepcopy
+import asyncio
 
 from fastapi.testclient import TestClient
 
 from main import app
+from config import get_settings
+from domain import SignOffAgentOutput, StressInput
+from services.ai_service import AIServiceError
+from services import twin_orchestrator
 
 client = TestClient(app)
 
@@ -86,9 +91,65 @@ def test_twin_backed_brief_covers_resilience_gaps_and_review_status():
     assert 'ownership coverage' in brief['twinRun']['evaluator']['summary'].lower()
     assert any(action.startswith('Stale artefacts:') for action in brief['requiredActions'])
     assert any(action.startswith('Conflicts:') for action in brief['requiredActions'])
-    assert any(action.startswith('Downstream dependencies:') for action in brief['requiredActions'])
+    assert ('Downstream dependencies: training inherits a dependency effect and must follow upstream remediation sequencing.'
+            in brief['requiredActions'])
     assert any(action.startswith('Ownership coverage:') for action in brief['requiredActions'])
     assert any('PENDING_REVIEW' in action for action in brief['requiredActions'])
+
+
+def test_signoff_return_triggers_one_bounded_reconsideration(monkeypatch):
+    _, _, payload = prepare()
+    data = StressInput.model_validate(payload)
+    original_signoff = twin_orchestrator._signoff
+    calls = 0
+
+    def return_then_approve(practice):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return SignOffAgentOutput(decision='RETURNED', approved_finding_ids=[], reconsideration={
+                'findingIds': [practice.findings[0].id],
+                'reasons': ['Clarify the supplied evidential basis.'],
+                'requiredEvidenceOrAnalysis': ['Reconsider the identified finding once.'],
+            }, unresolved_risks=['Formal review remains incomplete.'],
+                handoff_summary='Return one identified finding to Practice Group.',
+                formal_sign_off='NOT_COMPLETE', procedural_deviations=[])
+        return original_signoff(practice)
+
+    monkeypatch.setattr(twin_orchestrator, '_signoff', return_then_approve)
+    run = asyncio.run(twin_orchestrator.run_twins(data))
+
+    assert len(run.practice_group_attempts) == 2
+    assert len(run.sign_off_attempts) == 2
+    assert [record.agent for record in run.audit_records] == [
+        'TRIAGE', 'PRACTICE_GROUP', 'SIGN_OFF', 'PRACTICE_GROUP',
+        'SIGN_OFF', 'CLIENT_ALERT', 'EVALUATOR',
+    ]
+    assert run.sign_off_attempts[0].formal_sign_off == 'NOT_COMPLETE'
+    assert run.sign_off_attempts[1].formal_sign_off == 'COMPLETE'
+    assert run.client_alert.status == 'DRAFT_READY'
+
+
+def test_agent_provider_failure_falls_back_with_visible_audit_mode(monkeypatch):
+    _, _, payload = prepare()
+    data = StressInput.model_validate(payload)
+
+    async def provider_failure(*_args, **_kwargs):
+        raise AIServiceError('controlled provider failure')
+
+    monkeypatch.setenv('USE_MOCK_AI', 'false')
+    monkeypatch.setenv('OPENROUTER_API_KEY', 'test-placeholder-not-sent')
+    monkeypatch.setenv('OPENROUTER_MODEL', 'test-model')
+    monkeypatch.setenv('AGENT_FALLBACK_ON_ERROR', 'true')
+    get_settings.cache_clear()
+    monkeypatch.setattr(twin_orchestrator, 'run_structured', provider_failure)
+
+    run = asyncio.run(twin_orchestrator.run_twins(data))
+
+    assert {record.execution_mode for record in run.audit_records} == {'FALLBACK'}
+    assert run.context_hash
+    assert run.client_alert.status == 'DRAFT_READY'
+    assert run.evaluator.run_complete is True
 
 
 def test_unapproved_scenario_cannot_consume_analysis():
