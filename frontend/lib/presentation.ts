@@ -19,3 +19,9 @@ export function humanizeStatus(value: string) {
   const words = value.toLowerCase().replaceAll("_", " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
+
+export function aiTimeoutGuidance(aiMode: "mock" | "live") {
+  return aiMode === "mock"
+    ? "Demo Mode is already active. Retry the operation; if it repeats, refresh the page and check the backend health."
+    : "Retry the operation. For deterministic fallback, set USE_MOCK_AI=true on the backend and restart it.";
+}

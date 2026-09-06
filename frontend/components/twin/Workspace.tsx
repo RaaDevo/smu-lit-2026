@@ -26,7 +26,7 @@ import { Evidence } from "./Evidence";
 import { Badge, ImpactMap } from "./ImpactMap";
 import { PatchCard } from "./PatchCard";
 import { Brief } from "./Brief";
-import { humanizeStatus } from "@/lib/presentation";
+import { aiTimeoutGuidance, humanizeStatus } from "@/lib/presentation";
 
 type View = "evidence" | "scenario" | "impact" | "review" | "brief";
 
@@ -570,8 +570,7 @@ function Workspace({
           role="alert"
           className="notice border-red-700 bg-red-50 text-red-950"
         >
-          {error} Retry the operation using its button. For deterministic
-          fallback, set USE_MOCK_AI=true on the backend and restart it.
+          {error} {aiTimeoutGuidance(health.aiMode)}
         </p>
       )}
       {notice && (

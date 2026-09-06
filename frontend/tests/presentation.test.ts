@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { humanizeStatus } from "../lib/presentation.ts";
+import { aiTimeoutGuidance, humanizeStatus } from "../lib/presentation.ts";
 
 test("humanizeStatus renders legal workflow enums as readable labels", () => {
   assert.equal(
@@ -17,4 +17,15 @@ test("humanizeStatus renders legal workflow enums as readable labels", () => {
 test("humanizeStatus preserves already readable interface labels", () => {
   assert.equal(humanizeStatus("Demo Mode"), "Demo Mode");
   assert.equal(humanizeStatus("Live AI"), "Live AI");
+});
+
+test("aiTimeoutGuidance gives mock-mode recovery steps without suggesting a mode change", () => {
+  assert.equal(
+    aiTimeoutGuidance("mock"),
+    "Demo Mode is already active. Retry the operation; if it repeats, refresh the page and check the backend health.",
+  );
+  assert.equal(
+    aiTimeoutGuidance("live"),
+    "Retry the operation. For deterministic fallback, set USE_MOCK_AI=true on the backend and restart it.",
+  );
 });
