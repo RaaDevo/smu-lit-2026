@@ -54,6 +54,16 @@ def test_twin_run_endpoint_returns_five_audited_agents() -> None:
     assert [item['agent'] for item in response.json()['auditRecords']] == [
         'TRIAGE', 'PRACTICE_GROUP', 'SIGN_OFF', 'CLIENT_ALERT', 'EVALUATOR',
     ]
+    triage = response.json()['triage']
+    assert triage['decision'] == 'Route the approved regulatory shock and every supplied artefact to Practice Group assessment.'
+    assert triage['latencyEstimate'] == 'UNKNOWN: firm latency calibration not supplied'
+    assert triage['latencyDriver'] == 'Firm triage cadence is not calibrated.'
+    assert triage['frictionNote'] == 'Potential false-alarm escalation friction cannot be quantified without firm calibration.'
+    assert triage['handoff'] == 'Practice Group Twin receives prioritised artefact items with supplied evidence.'
+    assert triage['confidenceThatThisMatchesReality'] == 'LOW'
+    assert triage['routedTo'] == 'Practice Group Twin'
+    assert triage['urgencyLabelApplied'] == 'HIGH'
+    assert response.json()['auditRecords'][0]['produced']['latencyEstimate'] == triage['latencyEstimate']
 
 
 def test_malformed_request_is_rejected() -> None:

@@ -243,6 +243,14 @@ class HealthResponse(Model):
 
 AgentName = Literal['TRIAGE', 'PRACTICE_GROUP', 'SIGN_OFF', 'CLIENT_ALERT', 'EVALUATOR']
 
+
+class TriageOperationalCalibration(Model):
+    triage_cadence: Text
+    informal_urgency_rule: Text
+    competing_workload: Text
+    known_triage_failure: Text
+
+
 class TwinCalibrationProfile(Model):
     id: Text
     version: Text
@@ -254,6 +262,15 @@ class TwinCalibrationProfile(Model):
     authority: list[Text] = Field(min_length=1)
     competence_boundaries: list[Text] = Field(min_length=1)
     handoff_rules: list[Text] = Field(min_length=1)
+    operational_context: TriageOperationalCalibration | None = None
+
+    @model_validator(mode='after')
+    def operational_context_matches_agent(self):
+        if self.agent == 'TRIAGE' and self.operational_context is None:
+            raise ValueError('Triage requires operational calibration configuration.')
+        if self.agent != 'TRIAGE' and self.operational_context is not None:
+            raise ValueError('Operational calibration is currently defined only for Triage.')
+        return self
 
 class TriageItem(Model):
     asset_id: Text
@@ -268,6 +285,14 @@ class TriageAgentInput(StressInput):
 class TriageAgentOutput(Model):
     items: list[TriageItem] = Field(min_length=1)
     handoff_summary: Text
+    decision: Text
+    latency_estimate: Text
+    latency_driver: Text
+    friction_note: Text
+    handoff: Text
+    confidence_that_this_matches_reality: Literal['LOW', 'MEDIUM', 'HIGH']
+    routed_to: Text
+    urgency_label_applied: Severity
 
 class ReconsiderationRequest(Model):
     finding_ids: list[Text] = Field(min_length=1)

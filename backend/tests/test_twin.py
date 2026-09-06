@@ -65,6 +65,32 @@ def test_canonical_workflow_preserves_sources_and_original_text():
     assert set(payload['scenario']['legalQuestions']) <= set(report.json()['outstandingQuestions'])
 
 
+def test_twin_backed_brief_covers_resilience_gaps_and_review_status():
+    pack, comparative, payload = prepare()
+    twin_run = client.post('/analyse/twin-run', json=payload)
+    assert twin_run.status_code == 200, twin_run.text
+    impact = twin_run.json()['impact']
+    remediation = client.post('/analyse/remediation', json={**payload, 'impact': impact})
+    assert remediation.status_code == 200, remediation.text
+
+    report = client.post('/reports/generate', json={
+        **payload, 'development': pack['development'], 'comparative': comparative,
+        'impact': impact, 'remediation': remediation.json(), 'decisions': [],
+        'twinRun': twin_run.json(),
+    })
+
+    assert report.status_code == 200, report.text
+    brief = report.json()
+    categories = {item['category'] for item in brief['twinRun']['evaluator']['observations']}
+    assert {'STALE_ARTEFACT', 'DOWNSTREAM_EFFECT', 'CONTRADICTION', 'RESILIENCE_FAILURE'} <= categories
+    assert 'ownership coverage' in brief['twinRun']['evaluator']['summary'].lower()
+    assert any(action.startswith('Stale artefacts:') for action in brief['requiredActions'])
+    assert any(action.startswith('Conflicts:') for action in brief['requiredActions'])
+    assert any(action.startswith('Downstream dependencies:') for action in brief['requiredActions'])
+    assert any(action.startswith('Ownership coverage:') for action in brief['requiredActions'])
+    assert any('PENDING_REVIEW' in action for action in brief['requiredActions'])
+
+
 def test_unapproved_scenario_cannot_consume_analysis():
     _, _, payload = prepare()
     payload['scenario'].update(status='AI_GENERATED_SCENARIO', approvedBy=None, approvedAt=None)

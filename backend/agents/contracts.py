@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from .shared_scaffold import compose_twin_system_prompt
 from domain import TwinCalibrationProfile
 
 
@@ -9,8 +10,12 @@ from domain import TwinCalibrationProfile
 class AgentSpec:
     name: str
     prompt_version: str
-    system_prompt: str
+    role_prompt: str
     profile: TwinCalibrationProfile
+
+    @property
+    def system_prompt(self) -> str:
+        return compose_twin_system_prompt(self.role_prompt, self.profile)
 
 
 def load_profiles() -> dict[str, TwinCalibrationProfile]:

@@ -247,6 +247,13 @@ export type HealthResponse = {
   requireAuth: boolean;
 };
 
+export type TriageOperationalCalibration = {
+  triageCadence: string;
+  informalUrgencyRule: string;
+  competingWorkload: string;
+  knownTriageFailure: string;
+};
+
 export type TwinCalibrationProfile = {
   id: string;
   version: string;
@@ -258,6 +265,7 @@ export type TwinCalibrationProfile = {
   authority: Array<string>;
   competenceBoundaries: Array<string>;
   handoffRules: Array<string>;
+  operationalContext: TriageOperationalCalibration | null;
 };
 
 export type TriageItem = {
@@ -279,6 +287,14 @@ export type TriageAgentInput = {
 export type TriageAgentOutput = {
   items: Array<TriageItem>;
   handoffSummary: string;
+  decision: string;
+  latencyEstimate: string;
+  latencyDriver: string;
+  frictionNote: string;
+  handoff: string;
+  confidenceThatThisMatchesReality: "LOW" | "MEDIUM" | "HIGH";
+  routedTo: string;
+  urgencyLabelApplied: "LOW" | "MEDIUM" | "HIGH";
 };
 
 export type ReconsiderationRequest = {

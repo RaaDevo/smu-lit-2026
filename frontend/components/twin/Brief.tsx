@@ -2,6 +2,42 @@ import type { ResilienceBrief } from "@/types/domain";
 import { Badge } from "./ImpactMap";
 import { Evidence } from "./Evidence";
 
+function titleCase(value: string) {
+  return value.toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatAffectedArtefact(assetId: string, section: string) {
+  const names: Record<string, string> = {
+    playbook: "Playbook",
+    checklist: "Checklist",
+    training: "Training",
+    advisory: "Advisory",
+  };
+  const name = names[assetId] ?? titleCase(assetId.replaceAll("_", " "));
+  if (assetId === "playbook") return `${name} §${section}`;
+  return `${name} · ${titleCase(section)}`;
+}
+
+function parseRequiredAction(action: string) {
+  const match = action.match(
+    /^(.*?):\s*([^/]+?)\s*\/\s*([^—]+?)\s*—\s*([^.]+)\.\s*(.*)$/,
+  );
+  if (!match) {
+    return {
+      owner: "Owner not specified",
+      affected: "Affected artefact not specified",
+      status: "Review Required",
+      action,
+    };
+  }
+  return {
+    owner: match[1].trim(),
+    affected: formatAffectedArtefact(match[2].trim(), match[3].trim()),
+    status: titleCase(match[4].trim().replaceAll("_", " ")),
+    action: match[5].trim(),
+  };
+}
+
 export function Brief({ brief }: { brief: ResilienceBrief }) {
   const changeCount =
     brief.counts.UPDATE_REQUIRED + brief.counts.DOWNSTREAM_UPDATE;
@@ -37,24 +73,49 @@ export function Brief({ brief }: { brief: ResilienceBrief }) {
           </button>
         </div>
       </div>
-      <section className="brief-executive text-center">
-        <div className="mb-3 border-b border-[#7777a2] pb-3">
+      <section className="brief-executive">
+        <div className="executive-summary text-center">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d7d7ed]">
             Executive outcome
           </p>
         </div>
-        <h3 className="mt-2 font-serif text-2xl font-semibold tracking-[-0.02em]">
+        <h3 className="executive-headline legacy-headline mt-3 font-serif font-semibold tracking-[-0.025em]">
           {brief.findings.length} artefacts assessed · {changeCount} require action · {reviewCount} require legal review
         </h3>
-        <p className="mx-auto mt-4 max-w-4xl text-sm leading-6 text-[#e7e7ee]">
+        <h3 className="executive-headline mt-3 font-serif font-semibold tracking-[-0.025em]">
+          {brief.findings.length} Artefacts Assessed · {changeCount} Require Action · {reviewCount} Requires Legal Review
+        </h3>
+        <p className="executive-description mx-auto mt-4 text-sm leading-6 text-[#e7e7ee]">
           {changeCount} change{changeCount === 1 ? "" : "s"} must be addressed, {reviewCount} item{reviewCount === 1 ? "" : "s"} remain subject to legal applicability review, and {unaffectedCount} artefact{unaffectedCount === 1 ? " remains" : "s remain"} unaffected under this approved hypothetical.
         </p>
-        <div className="mt-5 text-left">
-          <h4 className="font-semibold">Required actions</h4>
-          <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-6 text-[#f1f1f1]">
-            {brief.requiredActions.map((action, index) => (
-              <li key={index}>{action}</li>
-            ))}
+        <div className="executive-actions">
+          <h4 className="executive-actions-heading">Required Actions</h4>
+          <ul className="executive-action-list">
+            {brief.requiredActions.map((action, index) => {
+              const parsed = parseRequiredAction(action);
+              return (
+                <li key={index} className="executive-action-row">
+                  <div className="executive-action-meta">
+                    <span>
+                      <strong>Owner</strong>
+                      {parsed.owner}
+                    </span>
+                    <span>
+                      <strong>Affected Artefact</strong>
+                      {parsed.affected}
+                    </span>
+                    <span>
+                      <strong>Status</strong>
+                      <span className="executive-status">{parsed.status}</span>
+                    </span>
+                  </div>
+                  <p className="executive-action-copy">
+                    <strong>Required Action</strong>
+                    {parsed.action}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>

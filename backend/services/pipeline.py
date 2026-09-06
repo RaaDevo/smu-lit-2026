@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from domain import (ComparativeResult, DirectResult, ImpactResult, PatchReviewResult,
-    ProposedPatch, RemediationResult, ResilienceBrief, ReviewDecision, StressInput)
+    ProposedPatch, RemediationResult, ResilienceBrief, ReviewDecision, StressInput,
+    TriageAgentOutput, TwinRunResult)
 from domain import RemediationInput, ReportInput
 from services.propagation import propagate
 
@@ -106,6 +107,56 @@ def validate_impact(data):
             raise ValueError('Impact propagation does not match the supplied dependency graph.')
 
 
+def _payload_hash(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def validate_twin_run(run: TwinRunResult, data):
+    """Accept a Twin run downstream only when it matches this exact firm context."""
+    if run.context_hash != context_hash(data) or run.impact != data.impact:
+        raise ValueError('Twin run does not match the approved scenario, firm corpus, and impact result.')
+    if [record.sequence for record in run.audit_records] != list(range(1, len(run.audit_records) + 1)):
+        raise ValueError('Twin audit sequence is incomplete.')
+    for record in run.audit_records:
+        if record.input_hash != _payload_hash(record.received) or record.output_hash != _payload_hash(record.produced):
+            raise ValueError('Twin audit payload was modified.')
+    triage_record = next((record for record in run.audit_records if record.agent == 'TRIAGE'), None)
+    if triage_record is None or TriageAgentOutput.model_validate(triage_record.produced) != run.triage:
+        raise ValueError('Twin triage output does not match its audited operational record.')
+    direct = DirectResult(findings=run.practice_group_attempts[-1].findings)
+    validate_direct(direct, data)
+    if run.impact != propagate(direct, data.dependencies, context_hash(data)):
+        raise ValueError('Twin impact does not match deterministic dependency propagation.')
+
+
+def _twin_actions(run: TwinRunResult):
+    final_practice = run.practice_group_attempts[-1]
+    stale = [finding.asset_id for finding in run.impact.findings
+             if finding.status in ('UPDATE_REQUIRED', 'DOWNSTREAM_UPDATE')]
+    downstream = [finding.asset_id for finding in run.impact.findings if finding.downstream_asset_ids]
+    missing = [asset_id for asset_id in {finding.asset_id for finding in run.impact.findings}
+               if not final_practice.ownership.get(asset_id)]
+    actions = []
+    if stale:
+        actions.append('Stale artefacts: ' + ', '.join(stale) + ' require tracked remediation before operational reliance.')
+    if final_practice.conflicts:
+        actions.append('Conflicts: ' + '; '.join(conflict.issue for conflict in final_practice.conflicts)
+                       + ' Resolve these conflicts before relying on affected artefacts.')
+    if downstream:
+        actions.append('Downstream dependencies: ' + ', '.join(downstream)
+                       + ' inherit a dependency effect and must follow upstream remediation sequencing.')
+    if missing:
+        actions.append('Ownership coverage: assign a responsible owner for ' + ', '.join(missing) + '.')
+    else:
+        actions.append('Ownership coverage: every supplied artefact has a recorded owner; confirm each owner accepts the remediation task.')
+    actionable = [finding for finding in run.impact.findings
+                  if finding.status in ('UPDATE_REQUIRED', 'REVIEW_REQUIRED', 'DOWNSTREAM_UPDATE')]
+    actions.append('Remediation requirements: ' + str(len(actionable))
+                   + ' conditional proposal(s) require review decisions before publication or operational reliance.')
+    actions.append('Lawyer-review status: ' + '; '.join(run.sign_off_attempts[-1].unresolved_risks))
+    return actions
+
+
 def validate_remediation(result, data):
     unique(result.patches, 'patch')
     unique(result.review_findings, 'review finding')
@@ -147,6 +198,8 @@ def generate_brief(data):
     validate_comparative_input(data)
     validate_comparative(data.comparative, data)
     validate_remediation(data.remediation, data)
+    if data.twin_run:
+        validate_twin_run(data.twin_run, data)
     unique(data.decisions, 'decision')
     patches = {p.id: p.model_copy(deep=True) for p in data.remediation.patches}
     for decision in data.decisions:
@@ -163,6 +216,9 @@ def generate_brief(data):
     actions = [f'{owners[p.asset_id]}: {p.asset_id} / {p.section} — {p.status}. '
         + ('Reviewed proposal recorded; source document publication remains a separate human action.'
            if p.status in ('APPROVED', 'EDITED') else 'Resolve the review decision before any document publication.') for p in patches.values()]
+    twin_observations = data.twin_run.evaluator.observations if data.twin_run else []
+    if data.twin_run:
+        actions.extend(_twin_actions(data.twin_run))
     return ResilienceBrief(title='Regulatory Resilience Brief — hypothetical Singapore stress test',
         generated_at=datetime.now(timezone.utc).isoformat(), development=data.development,
         scenario=data.scenario, comparative=data.comparative, sources=data.sources,
@@ -171,6 +227,8 @@ def generate_brief(data):
         review_findings=data.remediation.review_findings,
         outstanding_questions=list(dict.fromkeys([
             *data.scenario.legal_questions, *data.remediation.outstanding_questions,
+            *(observation.recommendation for observation in twin_observations
+              if observation.category in ('UNRESOLVED_RISK', 'MISSING_OWNERSHIP', 'RESILIENCE_FAILURE')),
         ])),
         required_actions=actions, counts=data.impact.counts, twin_run=data.twin_run)
 

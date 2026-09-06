@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { User } from "firebase/auth";
 import type {
   HealthResponse,
@@ -16,6 +16,7 @@ import {
   approveScenario,
   applyComparativeResult,
   createLawyerAssumption,
+  type ProjectState,
 } from "@/lib/project-state";
 import { loadProject, saveProject } from "@/lib/project";
 import { authEnabled, firestoreEnabled } from "@/lib/firebase";
@@ -30,6 +31,239 @@ type View = "evidence" | "scenario" | "impact" | "review" | "brief";
 
 function formatTimestamp(value: string | null) {
   return value ? new Date(value).toLocaleString() : "Not recorded";
+}
+
+function LawyerAssumptionStage({
+  project,
+  seed,
+  busy,
+  canStress,
+  reviewer,
+  setProject,
+  run,
+  setView,
+}: {
+  project: ProjectState;
+  seed: NonNullable<ProjectState["seed"]>;
+  busy: boolean;
+  canStress: boolean;
+  reviewer: string;
+  setProject: Dispatch<SetStateAction<ProjectState>>;
+  run: (label: string, action: () => Promise<void>) => Promise<void>;
+  setView: Dispatch<SetStateAction<View>>;
+}) {
+  const comparative = project.comparative;
+  const selectedScenario = project.scenario;
+  if (!comparative) return null;
+  const recommendation = comparative.recommendation;
+  const recommended = comparative.scenarios.find(
+    (scenario) => scenario.id === recommendation?.scenarioId,
+  );
+
+  return (
+    <section className="assumption-workspace">
+      <aside className="assumption-evidence-rail">
+        <div className="assumption-rail-heading">
+          <p className="metadata">Comparative evidence</p>
+          <h2 className="mt-2 font-serif text-2xl font-semibold tracking-[-0.02em]">
+            What Donna found
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#686868]">
+            Source context stays visible while you choose a working assumption.
+          </p>
+        </div>
+        {comparative.assessments.map((assessment, index) => (
+          <article key={index} className="assumption-assessment">
+            <h3 className="font-semibold">{assessment.jurisdiction}</h3>
+            <p className="metadata mt-2">
+              {assessment.classification} · {assessment.relevance} relevance
+            </p>
+            <p className="mt-3 text-sm leading-6">{assessment.reasoning}</p>
+            <p className="metadata mt-3">
+              Confidence {Math.round(assessment.confidence * 100)}%
+            </p>
+            <Evidence references={assessment.evidence} sources={seed.sources} />
+          </article>
+        ))}
+      </aside>
+
+      <div className="assumption-main-panel">
+        <div className="assumption-intro">
+          <h2 className="font-serif text-3xl font-semibold tracking-[-0.025em]">
+            Choose one Singapore working assumption
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#686868]">
+            These are possible scenarios, not predictions or current Singapore
+            law. Editing invalidates prior approval and downstream results.
+          </p>
+        </div>
+
+        {recommendation && recommended && (
+          <section className="recommendation-panel" aria-labelledby="donna-recommendation-heading">
+            <div className="recommendation-heading-row">
+              <div>
+                <p className="metadata text-[#06054d]">Donna recommendation · AI-generated</p>
+                <h3 id="donna-recommendation-heading" className="mt-2 font-serif text-2xl font-semibold tracking-[-0.02em]">
+                  {recommended.title}
+                </h3>
+              </div>
+              <span className="recommendation-badge">Not current Singapore law</span>
+            </div>
+            <p className="mt-3 text-sm leading-6">{recommendation.rationale}</p>
+            <div className="recommendation-meta">
+              <span>Confidence {Math.round(recommendation.confidence * 100)}%</span>
+              <span>{recommendation.persuasiveWeight} persuasive weight</span>
+            </div>
+            <button
+              className="button-primary mt-5"
+              disabled={busy}
+              onClick={() => setProject((current) => selectScenario(current, recommended))}
+            >
+              Use Donna&apos;s recommendation
+            </button>
+          </section>
+        )}
+
+        <section className="scenario-section" aria-labelledby="alternative-scenarios-heading">
+          <div className="section-heading-row">
+            <div>
+              <p className="metadata">Step 2</p>
+              <h3 id="alternative-scenarios-heading" className="mt-1 text-lg font-semibold">
+                Alternative scenarios
+              </h3>
+            </div>
+            <p className="text-sm text-[#686868]">Select one to inspect and edit.</p>
+          </div>
+          <div className="scenario-list">
+            {comparative.scenarios.map((scenario) => {
+              const isRecommended = scenario.id === recommendation?.scenarioId;
+              const isSelected = selectedScenario?.id === scenario.id;
+              return (
+                <button
+                  key={scenario.id}
+                  disabled={busy}
+                  onClick={() => setProject((current) => selectScenario(current, scenario))}
+                  aria-pressed={isSelected}
+                  className={`scenario-option ${isSelected ? "scenario-option-selected" : ""}`}
+                >
+                  <span className="scenario-option-topline">
+                    <strong>{scenario.title}</strong>
+                    {isRecommended && <span className="scenario-tag">Donna recommendation</span>}
+                  </span>
+                  <span className="mt-2 block text-sm leading-6">{scenario.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="assumption-editor" aria-labelledby="assumption-editor-heading">
+          <div className="section-heading-row">
+            <div>
+              <p className="metadata">Step 3</p>
+              <h3 id="assumption-editor-heading" className="mt-1 text-lg font-semibold">
+                Enter or edit my own assumption
+              </h3>
+            </div>
+            <button
+              className="button-secondary"
+              disabled={busy}
+              onClick={() => setProject((current) => createLawyerAssumption(current))}
+            >
+              Start a new assumption
+            </button>
+          </div>
+          {selectedScenario ? (
+            <div className="assumption-edit-surface">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="metadata">Selected assumption</p>
+                  <p className="mt-1 font-semibold">{selectedScenario.title}</p>
+                </div>
+                <Badge status={selectedScenario.status} />
+              </div>
+              <label className="mt-5 block text-sm font-semibold">
+                Working assumption
+                <textarea
+                  className="field-control min-h-32 leading-6"
+                  disabled={busy}
+                  value={selectedScenario.description}
+                  onChange={(event) => setProject((current) => editScenario(current, event.target.value))}
+                />
+              </label>
+              <div className="assumption-facts">
+                <p><strong>Uncertainty:</strong> {selectedScenario.uncertainty}</p>
+                <p><strong>Assumptions:</strong> {selectedScenario.assumptions.join(" ")}</p>
+              </div>
+              <div className="legal-questions">
+                <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-[#06054d]">Legal questions to resolve</h4>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
+                  {selectedScenario.legalQuestions.map((question) => <li key={question}>{question}</li>)}
+                </ul>
+              </div>
+              <div className="supporting-evidence">
+                <h4 className="text-sm font-bold uppercase tracking-[0.08em] text-[#06054d]">Supporting evidence</h4>
+                <Evidence references={selectedScenario.evidence} sources={seed.sources} />
+              </div>
+            </div>
+          ) : (
+            <p className="empty-assumption">Choose a scenario above to create a working assumption.</p>
+          )}
+        </section>
+
+        {selectedScenario && (
+          <div className="scenario-action-bar">
+            <div>
+              <p className="metadata">Final lawyer review</p>
+              <p className="mt-1 text-sm text-[#686868]">
+                Approval turns this into the assumption used by the firm twin.
+              </p>
+              {canStress && (
+                <p className="mt-2 text-xs text-[#686868]">
+                  Approved by {selectedScenario.approvedBy} · {formatTimestamp(selectedScenario.approvedAt)}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="button-secondary"
+                disabled={busy || canStress || !selectedScenario.description.trim()}
+                onClick={() => setProject((current) => approveScenario(current, reviewer))}
+              >
+                Approve working assumption
+              </button>
+              <button
+                className="button-primary"
+                disabled={busy || !canStress}
+                onClick={() => run(
+                  "Running Triage, Practice Group, Sign-off, Client Alert and Evaluator agents",
+                  async () => {
+                    const twinRun = await api.runTwins({
+                      scenario: selectedScenario,
+                      sources: seed.sources,
+                      firmAssets: seed.firmAssets,
+                      dependencies: seed.dependencies,
+                    });
+                    setProject((current) => ({
+                      ...current,
+                      twinRun,
+                      impact: twinRun.impact,
+                      remediation: null,
+                      decisions: [],
+                      brief: null,
+                    }));
+                    setView("impact");
+                  },
+                )}
+              >
+                Run Firm and Law Firm Twins
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export function TwinApp() {
@@ -344,6 +578,18 @@ function Workspace({
           {notice}
         </p>
       )}
+      {view === "scenario" && project.comparative && (
+        <LawyerAssumptionStage
+          project={project}
+          seed={seed}
+          busy={!!busy}
+          canStress={canStress}
+          reviewer={reviewer}
+          setProject={setProject}
+          run={run}
+          setView={setView}
+        />
+      )}
       {canStress && project.scenario && ["impact", "review", "brief"].includes(view) && (
         <section className="assumption-strip print:hidden">
           <div>
@@ -430,7 +676,8 @@ function Workspace({
         </section>
       )}
 
-      {view === "scenario" && project.comparative && (
+      {/* Legacy inline stage retained below for reference; rendered stage is LawyerAssumptionStage.
+      {view === "scenario" && project.comparative && false && (
         <section className="grid grid-cols-[400px_1fr] gap-6">
           <aside className="space-y-4">
             {project.comparative.assessments.map((a, i) => (
@@ -551,7 +798,7 @@ function Workspace({
             )}
           </div>
         </section>
-      )}
+      )} */}
 
       {view === "impact" && project.impact && (
         <section>

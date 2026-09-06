@@ -53,7 +53,14 @@ def _triage(data: StressInput) -> TriageAgentOutput:
     return TriageAgentOutput(items=[{'assetId': asset.id, 'priority': 'HIGH',
         'issue': f'Assess {asset.title} against the approved hypothetical.', 'proposedOwner': asset.owner,
         'evidence': [item.model_dump() for item in refs]} for asset in data.firm_assets],
-        handoffSummary='Every supplied artefact was routed to the Practice Group Twin with curated source context.')
+        handoff_summary='Every supplied artefact was routed to the Practice Group Twin with curated source context.',
+        decision='Route the approved regulatory shock and every supplied artefact to Practice Group assessment.',
+        latency_estimate='UNKNOWN: firm latency calibration not supplied',
+        latency_driver='Firm triage cadence is not calibrated.',
+        friction_note='Potential false-alarm escalation friction cannot be quantified without firm calibration.',
+        handoff='Practice Group Twin receives prioritised artefact items with supplied evidence.',
+        confidence_that_this_matches_reality='LOW',
+        routed_to='Practice Group Twin', urgency_label_applied='HIGH')
 
 def _practice(data: StressInput, triage: TriageAgentOutput, reconsideration=None) -> PracticeGroupAgentOutput:
     direct = demo_direct(data)
@@ -81,6 +88,11 @@ def _client_alert(signoff: SignOffAgentOutput, practice: PracticeGroupAgentOutpu
 def _evaluator(data: StressInput, impact, audit: list[AgentAuditRecord]) -> EvaluatorAgentOutput:
     refs = evidence(data.sources)
     stale = [finding.asset_id for finding in impact.findings if finding.status in ('UPDATE_REQUIRED', 'DOWNSTREAM_UPDATE')]
+    practice_record = next(record for record in audit if record.agent == 'PRACTICE_GROUP')
+    practice = practice_record.produced
+    conflicts = practice.get('conflicts', [])
+    ownership = practice.get('ownership', {})
+    missing_owners = [asset.id for asset in data.firm_assets if not ownership.get(asset.id)]
     observations = [{
         'id': 'evaluator-stale-assets', 'category': 'STALE_ARTEFACT', 'severity': 'HIGH',
         'agentNames': ['PRACTICE_GROUP', 'SIGN_OFF'], 'assetIds': stale,
@@ -94,8 +106,36 @@ def _evaluator(data: StressInput, impact, audit: list[AgentAuditRecord]) -> Eval
         'recommendation': 'Refresh training only after the checklist remediation is resolved.',
         'evidence': [item.model_dump() for item in refs],
     }]
+    if conflicts:
+        conflict = conflicts[0]
+        observations.append({
+            'id': 'evaluator-conflict', 'category': 'CONTRADICTION', 'severity': conflict['severity'],
+            'agentNames': ['PRACTICE_GROUP', 'EVALUATOR'], 'assetIds': conflict['assetIds'],
+            'issue': conflict['issue'],
+            'recommendation': 'Resolve the identified internal conflict before relying on the affected artefacts.',
+            'evidence': conflict['evidence'],
+        })
+    if missing_owners:
+        observations.append({
+            'id': 'evaluator-missing-ownership', 'category': 'MISSING_OWNERSHIP', 'severity': 'HIGH',
+            'agentNames': ['PRACTICE_GROUP', 'EVALUATOR'], 'assetIds': missing_owners,
+            'issue': 'Affected firm artefacts have no recorded owner in the Practice Group handoff.',
+            'recommendation': 'Assign a responsible owner before remediation can be completed.',
+            'evidence': [item.model_dump() for item in refs],
+        })
+    if stale:
+        observations.append({
+            'id': 'evaluator-remediation-requirement', 'category': 'RESILIENCE_FAILURE', 'severity': 'HIGH',
+            'agentNames': ['TRIAGE', 'PRACTICE_GROUP', 'EVALUATOR'], 'assetIds': stale,
+            'issue': 'The approved shock leaves internal artefacts requiring remediation before operational reliance.',
+            'recommendation': 'Keep remediation proposals and their lawyer-review decisions open until every affected artefact is resolved.',
+            'evidence': [item.model_dump() for item in refs],
+        })
+    ownership_summary = ('Ownership coverage is incomplete for: ' + ', '.join(missing_owners)
+                         if missing_owners else 'Ownership coverage was reviewed; every supplied artefact has a recorded owner.')
     return EvaluatorAgentOutput(observations=observations, run_complete=len(audit) >= 4,
-        summary='Evaluator reviewed the handoffs, stale artefacts, downstream dependency effects, and unresolved legal scope.')
+        summary='Evaluator reviewed the handoffs, stale artefacts, conflicts, downstream dependency effects, '
+                + ownership_summary + ' Remediation and lawyer-review requirements remain conditional on the approved scenario.')
 
 async def run_twins(data: StressInput) -> TwinRunResult:
     run_hash = context_hash(data)
