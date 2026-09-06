@@ -1,0 +1,69 @@
+{
+  "sources": [
+    {
+      "source_id": "sg-online-safety-relief-accountability-act-2025",
+      "title": "Online Safety (Relief and Accountability) Act 2025",
+      "jurisdiction": "Singapore",
+      "source_type": "LEGISLATION",
+      "authority": "Parliament of Singapore",
+      "publication_or_effective_date": "2025-11-25 (assent); stated commencement 2026-06-29",
+      "local_file_path": "singapore/online_safety_relief_and_accountability_act_2025.md",
+      "provenance": "CURATED",
+      "legal_status": "CURRENT_VERIFIED_SINGAPORE_LAW",
+      "url": "https://sso.agc.gov.sg",
+      "relevant_text": "An Act to provide persons affected by online harmful activity with timely redress through the office of the Commissioner of Online Safety and rights of action in court proceedings, to improve and promote online safety, to deter and prevent online harmful activity, to promote accountability and responsible and reasonable conduct in the online environment, to make amendments to certain other Acts for alignment with this Act, and to make related amendments to other Acts."
+    },
+    {
+      "source_id": "uk-online-safety-act-2023",
+      "title": "Online Safety Act 2023",
+      "jurisdiction": "United Kingdom",
+      "source_type": "LEGISLATION",
+      "authority": "UK Parliament / OFCOM",
+      "publication_or_effective_date": "2023-10-26",
+      "local_file_path": "uk/online_safety_act_2023.md",
+      "provenance": "CURATED",
+      "legal_status": "FOREIGN_LEGISLATION",
+      "url": "https://www.legislation.gov.uk/ukpga/2023/50/contents",
+      "relevant_text": "This Act provides for a new regulatory framework which has the general purpose of\nmaking the use of internet services regulated by this Act safer for individuals in the\nUnited Kingdom."
+    },
+    {
+      "source_id": "au-online-safety-act-2021",
+      "title": "Online Safety Act 2021",
+      "jurisdiction": "Australia",
+      "source_type": "LEGISLATION",
+      "authority": "Federal Register of Legislation",
+      "publication_or_effective_date": "2024-12-11 (compilation)",
+      "local_file_path": "australia/online_safety_act_2021.md",
+      "provenance": "CURATED",
+      "legal_status": "FOREIGN_LEGISLATION",
+      "url": "https://www.legislation.gov.au/C2021A00076/latest/text",
+      "relevant_text": "The objects of this Act are:  \n(a)to improve online safety for Australians; and  \n(b)to promote online safety for Australians."
+    },
+    {
+      "source_id": "au-online-safety-age-restricted-platforms-rules-2025",
+      "title": "Online Safety (Age-Restricted Social Media Platforms) Rules 2025",
+      "jurisdiction": "Australia",
+      "source_type": "REGULATION",
+      "authority": "Federal Register of Legislation",
+      "publication_or_effective_date": "2026-03-26 (compilation)",
+      "local_file_path": "australia/online_safety_age_restricted_social_media_platforms_rules_2025.md",
+      "provenance": "CURATED",
+      "legal_status": "FOREIGN_REGULATORY_DEVELOPMENT",
+      "url": "https://www.legislation.gov.au",
+      "relevant_text": "This instrument is made under the *Online Safety Act 2021*."
+    },
+    {
+      "source_id": "nz-online-safety-minimum-age-child-safety-bill",
+      "title": "Online Safety (Minimum Age and Child Safety Risk Assessment) Bill",
+      "jurisdiction": "New Zealand",
+      "source_type": "LEGISLATION",
+      "authority": "New Zealand Parliament",
+      "publication_or_effective_date": null,
+      "local_file_path": "new_zealand/online_safety_minimum_age_child_safety_bill.md",
+      "provenance": "CURATED",
+      "legal_status": "PROPOSED_LAW",
+      "url": "https://www.legislation.govt.nz",
+      "relevant_text": "Clause 3 sets out the purpose of the Bill, which is to reduce the risk of harm to chil‐\ndren when online by imposing duties on operators of certain internet services."
+    }
+  ]
+}

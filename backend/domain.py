@@ -40,6 +40,8 @@ class LegalSource(Model):
     relevant_text: Text
     date: Text
     text_kind: Literal['EXCERPT', 'CURATOR_SUMMARY']
+    provenance: Literal['CURATED', 'LIVE_RESEARCH'] = 'CURATED'
+    local_file_path: str | None = None
 
 class EvidenceReference(Model):
     source_id: Text

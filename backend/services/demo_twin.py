@@ -1,13 +1,15 @@
 """Explicit demo fixtures. Live mode never uses these status lookups."""
 from pathlib import Path
 from domain import ComparativeResult, DirectResult, EvidenceReference, RemediationResult, Scenario, SeedPack
+from services.curated_sources import load_curated_sources
 
 CANONICAL_DESCRIPTION = ('IF Singapore required designated social-media services to conduct and document '
     'an illegal-content risk assessment and retain it for regulatory inspection, the firm would need '
     'to incorporate the assessment and retention checks into its onboarding workflow.')
 
 def load_seed() -> SeedPack:
-    return SeedPack.model_validate_json((Path(__file__).parents[1] / 'data' / 'seed.json').read_text(encoding='utf-8'))
+    seed = SeedPack.model_validate_json((Path(__file__).parents[1] / 'data' / 'seed.json').read_text(encoding='utf-8'))
+    return seed.model_copy(update={'sources': [*load_curated_sources(), *seed.sources]})
 
 def evidence(sources):
     return [EvidenceReference(source_id=s.id, relevant_text=s.relevant_text,
@@ -26,10 +28,19 @@ def demo_comparative(data):
             assumptions=['Hypothetical Singapore position; scope and commencement require lawyer judgement.'],
             evidence=refs, uncertainty='HIGH', legal_questions=['Which services are covered and when would a change take effect?'],
             status='AI_GENERATED_SCENARIO', approved_by=None, approved_at=None))
-    assessments = [{'jurisdiction': s.jurisdiction,
-        'classification': 'FOREIGN_DEVELOPMENT' if s.jurisdiction != 'Singapore' else 'FACT',
-        'relevance': 'HIGH' if s.jurisdiction != 'Singapore' else 'MEDIUM', 'reasoning': s.relevant_text, 'evidence': [r], 'confidence': 'MEDIUM',
-    } for s, r in zip(data.sources, refs)]
+    assessments = []
+    for jurisdiction in dict.fromkeys(source.jurisdiction for source in data.sources):
+        jurisdiction_sources = [(source, reference) for source, reference in zip(data.sources, refs)
+                                if source.jurisdiction == jurisdiction]
+        first_source, _ = jurisdiction_sources[0]
+        assessments.append({
+            'jurisdiction': jurisdiction,
+            'classification': 'FOREIGN_DEVELOPMENT' if jurisdiction != 'Singapore' else 'FACT',
+            'relevance': 'HIGH' if jurisdiction != 'Singapore' else 'MEDIUM',
+            'reasoning': first_source.relevant_text,
+            'evidence': [reference for _, reference in jurisdiction_sources],
+            'confidence': 'MEDIUM',
+        })
     return ComparativeResult(assessments=assessments, scenarios=scenarios, recommendation={
         'scenarioId': 'scenario-1',
         'rationale': 'The foreign documented-assessment model has high persuasive relevance to the supplied Singapore designated-service framework, while remaining hypothetical Singapore law.',
